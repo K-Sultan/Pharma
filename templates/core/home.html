@@ -3,6 +3,18 @@
 {% block title %}Home{% endblock %}
 
 {% block content %}
-<h1>Clinic Appointment System</h1>
-<p>Welcome to the clinic system.</p>
+<section class="hero-card">
+	<p class="kicker">Digital Care Platform</p>
+	<h1>Clinic Appointment System</h1>
+	<p>Manage consultations, appointments, and patient access from a single streamlined interface.</p>
+
+	{% if user.is_authenticated %}
+		<a class="btn btn-primary" href="{% url 'dashboard_redirect' %}">Go to Dashboard</a>
+	{% else %}
+		<div class="action-row">
+			<a class="btn btn-primary" href="{% url 'register' %}">Create Account</a>
+			<a class="btn btn-soft" href="{% url 'login' %}">Sign In</a>
+		</div>
+	{% endif %}
+</section>
 {% endblock %}

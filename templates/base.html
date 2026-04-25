@@ -4,28 +4,42 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Clinic System{% endblock %}</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
 </head>
 <body>
-    <nav>
-        <a href="/">Home</a>
+    <div class="page-shell">
+        <nav class="top-nav">
+            <div class="brand-wrap">
+                <span class="brand-dot"></span>
+                <a class="brand-link" href="/">ClinicFlow</a>
+            </div>
 
-        {% if user.is_authenticated %}
-            <a href="{% url 'dashboard_redirect' %}">Dashboard</a>
-            <a href="{% url 'logout' %}">Logout</a>
-        {% else %}
-            <a href="{% url 'login' %}">Login</a>
-            <a href="{% url 'register' %}">Register</a>
-        {% endif %}
-    </nav>
+            <div class="nav-links">
+                <a class="nav-link" href="/">Home</a>
+                {% if user.is_authenticated %}
+                    <a class="nav-link" href="{% url 'dashboard_redirect' %}">Dashboard</a>
+                    <a class="btn btn-soft" href="{% url 'logout' %}">Logout</a>
+                {% else %}
+                    <a class="btn btn-soft" href="{% url 'login' %}">Login</a>
+                    <a class="btn btn-primary" href="{% url 'register' %}">Register</a>
+                {% endif %}
+            </div>
+        </nav>
 
-    <hr>
+        <main class="content-wrap">
+            {% if messages %}
+                <section class="messages" aria-label="System messages">
+                    {% for message in messages %}
+                        <p class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</p>
+                    {% endfor %}
+                </section>
+            {% endif %}
 
-    {% if messages %}
-        {% for message in messages %}
-            <p>{{ message }}</p>
-        {% endfor %}
-    {% endif %}
+            {% block content %}{% endblock %}
+        </main>
 
-    {% block content %}{% endblock %}
+        <footer class="site-footer">Clinic Appointment System</footer>
+    </div>
 </body>
 </html>

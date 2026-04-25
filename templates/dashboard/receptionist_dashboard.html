@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block title %}Receptionist Dashboard{% endblock %}
+
+{% block content %}
+<section class="panel-card">
+	<h2>Receptionist Dashboard</h2>
+	<p>Welcome, <strong>{{ request.user.username }}</strong>.</p>
+	<p class="muted">Handle patient flow, scheduling, and front-desk tasks smoothly.</p>
+	<div class="action-row">
+		<a class="btn btn-primary" href="/">Back to Home</a>
+	</div>
+</section>
+{% endblock %}

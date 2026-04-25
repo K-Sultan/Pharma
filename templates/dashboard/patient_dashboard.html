@@ -3,6 +3,12 @@
 {% block title %}Patient Dashboard{% endblock %}
 
 {% block content %}
-<h2>Patient Dashboard</h2>
-<p>Welcome, {{ request.user.username }}</p>
+<section class="panel-card">
+	<h2>Patient Dashboard</h2>
+	<p>Welcome, <strong>{{ request.user.username }}</strong>.</p>
+	<p class="muted">You can monitor your appointments and consultation updates from here.</p>
+	<div class="action-row">
+		<a class="btn btn-primary" href="/">Back to Home</a>
+	</div>
+</section>
 {% endblock %}

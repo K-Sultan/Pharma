@@ -3,16 +3,19 @@
 {% block title %}Login{% endblock %}
 
 {% block content %}
-<h2>Login</h2>
+<section class="form-card narrow">
+    <h2>Welcome Back</h2>
+    <p class="muted">Log in to access your clinic workspace.</p>
 
-<form method="POST">
-    {% csrf_token %}
-    <label>Username:</label>
-    <input type="text" name="username"><br><br>
+    <form method="POST" class="stack-form">
+        {% csrf_token %}
+        <label for="username">Username</label>
+        <input id="username" type="text" name="username" required>
 
-    <label>Password:</label>
-    <input type="password" name="password"><br><br>
+        <label for="password">Password</label>
+        <input id="password" type="password" name="password" required>
 
-    <button type="submit">Login</button>
-</form>
+        <button class="btn btn-primary" type="submit">Login</button>
+    </form>
+</section>
 {% endblock %}
