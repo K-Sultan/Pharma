@@ -1,7 +1,14 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import CustomUser, DoctorProfile, PatientProfile, ReceptionistProfile
+from .models import (
+	CustomUser,
+	DoctorProfile,
+	DoctorScheduleException,
+	DoctorWeeklySchedule,
+	PatientProfile,
+	ReceptionistProfile,
+)
 
 
 @admin.register(CustomUser)
@@ -32,3 +39,17 @@ class DoctorProfileAdmin(admin.ModelAdmin):
 class ReceptionistProfileAdmin(admin.ModelAdmin):
 	list_display = ('user', 'department', 'phone_extension')
 	search_fields = ('user__username', 'user__email', 'department')
+
+
+@admin.register(DoctorWeeklySchedule)
+class DoctorWeeklyScheduleAdmin(admin.ModelAdmin):
+	list_display = ('doctor', 'day', 'start_time', 'end_time')
+	list_filter = ('day',)
+	search_fields = ('doctor__user__username', 'doctor__specialization', 'doctor__department')
+
+
+@admin.register(DoctorScheduleException)
+class DoctorScheduleExceptionAdmin(admin.ModelAdmin):
+	list_display = ('doctor', 'date', 'exception_type', 'start_time', 'end_time')
+	list_filter = ('exception_type', 'date')
+	search_fields = ('doctor__user__username', 'doctor__specialization', 'note')
