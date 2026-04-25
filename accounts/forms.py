@@ -29,6 +29,10 @@ class PatientRegistrationForm(forms.ModelForm):
 class DoctorCreateForm(forms.ModelForm):
     password = forms.CharField(widget=forms.PasswordInput)
     confirm_password = forms.CharField(widget=forms.PasswordInput)
+    license_number = forms.CharField(max_length=100)
+    specialization = forms.CharField(max_length=120)
+    department = forms.CharField(max_length=120, required=False)
+    bio = forms.CharField(widget=forms.Textarea, required=False)
 
     class Meta:
         model = User
@@ -52,6 +56,8 @@ class DoctorCreateForm(forms.ModelForm):
 class ReceptionistCreateForm(forms.ModelForm):
     password = forms.CharField(widget=forms.PasswordInput)
     confirm_password = forms.CharField(widget=forms.PasswordInput)
+    department = forms.CharField(max_length=120, required=False)
+    phone_extension = forms.CharField(max_length=10, required=False)
 
     class Meta:
         model = User

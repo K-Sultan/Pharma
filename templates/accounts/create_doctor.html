@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Doctor{% endblock %}
+
+{% block content %}
+<section class="form-card narrow">
+    <h2>Create Doctor Account</h2>
+    <p class="muted">Admin-only form for onboarding doctor users.</p>
+
+    <form method="POST" class="stack-form django-form">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button class="btn btn-primary" type="submit">Create Doctor</button>
+    </form>
+</section>
+{% endblock %}

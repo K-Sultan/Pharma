@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 
+from accounts.decorators import role_required
 from accounts.models import UserRole
 
 @login_required
@@ -20,20 +21,24 @@ def dashboard_redirect(request):
 
 
 @login_required
+@role_required(UserRole.PATIENT)
 def patient_dashboard(request):
     return render(request, 'dashboard/patient_dashboard.html')
 
 
 @login_required
+@role_required(UserRole.DOCTOR)
 def doctor_dashboard(request):
     return render(request, 'dashboard/doctor_dashboard.html')
 
 
 @login_required
+@role_required(UserRole.RECEPTIONIST)
 def receptionist_dashboard(request):
     return render(request, 'dashboard/receptionist_dashboard.html')
 
 
 @login_required
+@role_required(UserRole.ADMIN)
 def admin_dashboard(request):
     return render(request, 'dashboard/admin_dashboard.html')
