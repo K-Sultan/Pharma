@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+
+{% block title %}My Schedule{% endblock %}
+
+{% block content %}
+<section class="panel-card">
+    <h2>My Schedule</h2>
+    <p class="muted">Select a day from the weekly table to control that day schedule.</p>
+
+    <h3>Weekly Schedule</h3>
+    <table class="schedule-table">
+        <thead>
+            <tr>
+                <th>Day</th>
+                <th>Status</th>
+                <th>Hours</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in weekly_rows %}
+            <tr class="{% if row.is_selected %}is-selected{% endif %}">
+                <td>
+                    <a class="day-link" href="{% url 'doctor_schedule' %}?day={{ row.day_value }}">{{ row.day_label }}</a>
+                </td>
+                {% if row.entry %}
+                    <td><span class="badge badge-working">Working</span></td>
+                    <td>{{ row.entry.start_time|time:'H:i' }} - {{ row.entry.end_time|time:'H:i' }}</td>
+                {% else %}
+                    <td><span class="badge badge-off">Off</span></td>
+                    <td>Doctor is off</td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="schedule-editor">
+        <h3>Control {{ selected_day_label }}</h3>
+        {% if selected_weekly_entry %}
+            <p class="muted">Current: {{ selected_weekly_entry.start_time|time:'H:i' }} - {{ selected_weekly_entry.end_time|time:'H:i' }}</p>
+        {% else %}
+            <p class="muted">Current: Doctor is off.</p>
+        {% endif %}
+
+        <form method="post" class="stack-form django-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="save_weekly">
+            <input type="hidden" name="selected_day" value="{{ selected_day }}">
+            {{ day_schedule_form.as_p }}
+            <div class="action-row">
+                <button type="submit" class="btn btn-primary">Save Day Schedule</button>
+            </div>
+        </form>
+
+        <form method="post" class="stack-form" style="margin-top: 0.75rem;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="clear_weekly">
+            <input type="hidden" name="selected_day" value="{{ selected_day }}">
+            <button type="submit" class="btn btn-soft">Mark Selected Day Off</button>
+        </form>
+    </div>
+
+    <h3>Exceptions</h3>
+    <div class="exception-tabs" role="tablist" aria-label="Exception forms">
+        <button
+            id="tab-day-off"
+            class="tab-btn"
+            type="button"
+            role="tab"
+            aria-controls="panel-day-off"
+            aria-selected="false"
+            data-tab="day-off"
+        >
+            Add a Day Off
+        </button>
+        <button
+            id="tab-custom-workday"
+            class="tab-btn"
+            type="button"
+            role="tab"
+            aria-controls="panel-custom-workday"
+            aria-selected="false"
+            data-tab="custom-workday"
+        >
+            Add a Custom Work Day
+        </button>
+    </div>
+
+    {% if exception_entries %}
+        <table class="schedule-table exception-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Start</th>
+                    <th>End</th>
+                    <th>Note</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in exception_entries %}
+                <tr>
+                    <td>{{ entry.date|date:'d/m/Y' }}</td>
+                    <td>{{ entry.get_exception_type_display }}</td>
+                    <td>{{ entry.start_time|time:'H:i'|default:'-' }}</td>
+                    <td>{{ entry.end_time|time:'H:i'|default:'-' }}</td>
+                    <td>{{ entry.note|default:'-' }}</td>
+                    <td>
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete_exception">
+                            <input type="hidden" name="exception_id" value="{{ entry.id }}">
+                            <button type="submit" class="btn">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="muted">No exceptions added yet.</p>
+    {% endif %}
+
+    <div id="panel-day-off" class="tab-panel schedule-form-block" role="tabpanel" aria-labelledby="tab-day-off">
+        <form id="day-off-form" method="post" class="stack-form django-form">
+            {% csrf_token %}
+            <h4>Add a Day Off</h4>
+            <input type="hidden" name="action" value="add_day_off">
+            {{ day_off_form.as_p }}
+            <button type="submit" class="btn btn-primary">Save Day Off</button>
+        </form>
+    </div>
+
+    <div id="panel-custom-workday" class="tab-panel schedule-form-block" role="tabpanel" aria-labelledby="tab-custom-workday">
+        <form id="custom-workday-form" method="post" class="stack-form django-form">
+            {% csrf_token %}
+            <h4>Add a Custom Work Day</h4>
+            <input type="hidden" name="action" value="add_custom_work_day">
+            {{ custom_work_day_form.as_p }}
+            <button type="submit" class="btn btn-primary">Save Custom Work Day</button>
+        </form>
+    </div>
+
+    <div class="action-row" style="margin-top: 1rem;">
+        <a class="btn" href="{% url 'doctor_dashboard' %}">Back to Doctor Dashboard</a>
+    </div>
+</section>
+
+<script>
+(() => {
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const tabPanels = {
+        'day-off': document.getElementById('panel-day-off'),
+        'custom-workday': document.getElementById('panel-custom-workday'),
+    };
+
+    function setActiveTab(tabName) {
+        tabButtons.forEach((button) => {
+            const isActive = button.dataset.tab === tabName;
+            button.classList.toggle('is-active', isActive);
+            button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+
+        Object.entries(tabPanels).forEach(([name, panel]) => {
+            if (!panel) return;
+            panel.classList.toggle('is-active', name === tabName);
+        });
+    }
+
+    tabButtons.forEach((button) => {
+        button.addEventListener('click', () => setActiveTab(button.dataset.tab));
+    });
+
+    {% if custom_work_day_form.errors %}
+        setActiveTab('custom-workday');
+    {% else %}
+        setActiveTab('day-off');
+    {% endif %}
+})();
+</script>
+{% endblock %}
