@@ -1,17 +1,19 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 
+from accounts.models import UserRole
+
 @login_required
 def dashboard_redirect(request):
     user = request.user
 
-    if user.groups.filter(name='Admin').exists():
+    if user.role == UserRole.ADMIN or user.is_superuser:
         return redirect('admin_dashboard')
-    elif user.groups.filter(name='Doctor').exists():
+    elif user.role == UserRole.DOCTOR:
         return redirect('doctor_dashboard')
-    elif user.groups.filter(name='Receptionist').exists():
+    elif user.role == UserRole.RECEPTIONIST:
         return redirect('receptionist_dashboard')
-    elif user.groups.filter(name='Patient').exists():
+    elif user.role == UserRole.PATIENT:
         return redirect('patient_dashboard')
 
     return redirect('home')

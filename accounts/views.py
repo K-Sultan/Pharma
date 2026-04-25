@@ -1,27 +1,25 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth.models import Group
 from django.contrib.auth import login, authenticate, logout
 from django.contrib import messages
-from .forms import RegisterForm
+from .forms import PatientRegistrationForm
+from .models import PatientProfile, UserRole
 
 def register_view(request):
     if request.method == 'POST':
-        form = RegisterForm(request.POST)
+        form = PatientRegistrationForm(request.POST)
         if form.is_valid():
             user = form.save(commit=False)
             password = form.cleaned_data['password']
-            role = form.cleaned_data['role']
 
+            user.role = UserRole.PATIENT
             user.set_password(password)
             user.save()
-
-            group, created = Group.objects.get_or_create(name=role)
-            user.groups.add(group)
+            PatientProfile.objects.create(user=user)
 
             messages.success(request, 'Account created successfully.')
             return redirect('login')
     else:
-        form = RegisterForm()
+        form = PatientRegistrationForm()
 
     return render(request, 'accounts/register.html', {'form': form})
 
