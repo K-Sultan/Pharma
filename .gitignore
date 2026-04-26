@@ -22,3 +22,5 @@ Thumbs.db
 # migrations (optional: keep __init__.py only)
 */migrations/*
 !*/migrations/__init__.py
+
+/Clinic Appointment System-Mans46.pdf
