@@ -6,6 +6,9 @@ class AppointmentStatus(models.TextChoices):
     PENDING = "pending", "Pending"
     CONFIRMED = "confirmed", "Confirmed"
     DECLINED = "declined", "Declined"
+    CHECKED_IN = "checked_in", "Checked In"
+    COMPLETED = "completed", "Completed"
+    NO_SHOW = "no_show", "No Show"
     CANCELLED = "cancelled", "Cancelled"
 
 

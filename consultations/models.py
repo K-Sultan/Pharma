@@ -1,7 +1,15 @@
 from django.db import models
+from appointments.models import Appointment
 
 class ConsultationRecord(models.Model):
-    # TODO: Add OneToOneField to Appointment when Omar finishes his model
+    appointment = models.OneToOneField(
+        Appointment,
+        on_delete=models.CASCADE,
+        related_name="consultation_record",
+        blank=True,
+        null=True,
+    )
+    check_in_time = models.DateTimeField(blank=True, null=True)
     notes = models.TextField(blank=True, null=True, help_text="General notes from the consultation")
     diagnosis = models.TextField(blank=True, null=True, help_text="Final or provisional diagnosis")
     requested_tests = models.TextField(blank=True, null=True, help_text="Tests requested by the doctor")
@@ -10,6 +18,8 @@ class ConsultationRecord(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
+        if self.appointment_id:
+            return f"Consultation Record for Appointment #{self.appointment_id}"
         return f"Consultation Record #{self.id}"
 
 

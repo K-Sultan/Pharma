@@ -1,24 +1,107 @@
+import csv
 from datetime import datetime, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import models
+from django.db.models import Count, Q
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.dateparse import parse_date
 from django.utils import timezone
 from rest_framework import permissions, status
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.models import DoctorProfile
 from appointments.utils import get_available_slots
+from consultations.models import ConsultationRecord
+from consultations.serializers import ConsultationRecordSerializer
 
 from .models import Appointment, AppointmentStatus
-from .serializers import AppointmentSerializer, AppointmentSlotSerializer, DoctorProfileSerializer
+from .serializers import (
+    AppointmentQueueSerializer,
+    AppointmentSerializer,
+    AppointmentSlotSerializer,
+    AppointmentStatusUpdateSerializer,
+    DoctorProfileSerializer,
+)
 
 
 def _get_patient_profile_or_none(user):
     return getattr(user, "patient_profile", None)
+
+
+def _get_appointment_queryset():
+    return Appointment.objects.select_related(
+        "doctor__user",
+        "patient__user",
+        "consultation_record",
+    )
+
+
+def _parse_filter_date(value, field_name):
+    if not value:
+        return None
+
+    parsed_value = parse_date(value)
+    if parsed_value is None:
+        raise ValidationError({field_name: "Use YYYY-MM-DD format."})
+
+    return parsed_value
+
+
+def _apply_appointment_filters(queryset, params):
+    appointment_id = params.get("appointment_id") or params.get("id")
+    if appointment_id:
+        try:
+            queryset = queryset.filter(id=int(appointment_id))
+        except (TypeError, ValueError):
+            raise ValidationError({"id": "Appointment id must be an integer."})
+
+    doctor_id = params.get("doctor_id")
+    if doctor_id:
+        try:
+            queryset = queryset.filter(doctor_id=int(doctor_id))
+        except (TypeError, ValueError):
+            raise ValidationError({"doctor_id": "Doctor id must be an integer."})
+
+    patient_name = params.get("patient_name")
+    if patient_name:
+        queryset = queryset.filter(
+            Q(patient__user__username__icontains=patient_name)
+            | Q(patient__user__first_name__icontains=patient_name)
+            | Q(patient__user__last_name__icontains=patient_name)
+        )
+
+    status_value = params.get("status")
+    if status_value:
+        valid_statuses = {choice for choice, _ in AppointmentStatus.choices}
+        if status_value not in valid_statuses:
+            raise ValidationError({"status": "Invalid appointment status."})
+        queryset = queryset.filter(status=status_value)
+
+    start_date = _parse_filter_date(params.get("start_date"), "start_date")
+    end_date = _parse_filter_date(params.get("end_date"), "end_date")
+
+    if start_date and end_date and start_date > end_date:
+        raise ValidationError({"date_range": "start_date cannot be after end_date."})
+
+    if start_date:
+        queryset = queryset.filter(date__gte=start_date)
+    if end_date:
+        queryset = queryset.filter(date__lte=end_date)
+
+    return queryset
+
+
+def _upsert_consultation_record(appointment, check_in_time):
+    return ConsultationRecord.objects.update_or_create(
+        appointment=appointment,
+        defaults={"check_in_time": check_in_time},
+    )
 
 
 def _parse_time_value(value):
@@ -262,7 +345,11 @@ def patient_appointments(request):
     today = timezone.localdate()
     current_time = timezone.localtime().time()
 
-    upcoming = patient.appointments.filter(date__gte=today).exclude(status=AppointmentStatus.CANCELLED).order_by("date", "start_time")
+    upcoming = (
+        patient.appointments.filter(date__gte=today)
+        .exclude(status__in=[AppointmentStatus.CANCELLED, AppointmentStatus.COMPLETED, AppointmentStatus.NO_SHOW])
+        .order_by("date", "start_time")
+    )
     past = patient.appointments.filter(date__lt=today).exclude(status=AppointmentStatus.CANCELLED)
     cancelled = patient.appointments.filter(status=AppointmentStatus.CANCELLED)
 
@@ -287,7 +374,13 @@ class AppointmentApiRootView(APIView):
         return Response(
             {
                 "doctors_url": "/appointments/api/doctors/",
+                "doctor_daily_queue_url": "/appointments/api/doctors/<doctor_id>/queue/",
                 "patient_appointments_url": "/appointments/api/appointments/",
+                "appointment_check_in_url": "/appointments/api/appointments/<appointment_id>/check-in/",
+                "appointment_status_url": "/appointments/api/appointments/<appointment_id>/status/",
+                "appointment_search_url": "/appointments/api/appointments/search/",
+                "appointment_csv_export_url": "/appointments/api/appointments/export/csv/",
+                "admin_analytics_url": "/appointments/api/admin/analytics/",
                 "note": "Use the API endpoints for doctors, slots, booking, rescheduling, and cancellation.",
             }
         )
@@ -321,6 +414,70 @@ class DoctorSlotsAPIView(APIView):
                     {"start_time": slot_start, "end_time": slot_end}
                     for slot_start, slot_end in context["slots"]
                 ],
+            }
+        )
+
+
+class AppointmentCheckInAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, appointment_id):
+        appointment = get_object_or_404(_get_appointment_queryset(), id=appointment_id)
+
+        if appointment.date != timezone.localdate():
+            return Response(
+                {"detail": "Only today's appointments can be checked in."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if appointment.status in {
+            AppointmentStatus.CANCELLED,
+            AppointmentStatus.DECLINED,
+            AppointmentStatus.COMPLETED,
+            AppointmentStatus.NO_SHOW,
+        }:
+            return Response(
+                {"detail": f"Appointments with status '{appointment.status}' cannot be checked in."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        checked_in_at = timezone.now()
+        appointment.status = AppointmentStatus.CHECKED_IN
+        appointment.save(update_fields=["status"])
+
+        consultation_record, created = _upsert_consultation_record(
+            appointment,
+            checked_in_at,
+        )
+
+        return Response(
+            {
+                "appointment": AppointmentSerializer(appointment).data,
+                "consultation_record": ConsultationRecordSerializer(consultation_record).data,
+                "consultation_record_created": created,
+            }
+        )
+
+
+class DoctorDailyQueueAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, doctor_id):
+        queryset = (
+            _get_appointment_queryset()
+            .filter(
+                doctor_id=doctor_id,
+                date=timezone.localdate(),
+                status=AppointmentStatus.CHECKED_IN,
+            )
+            .order_by("consultation_record__check_in_time", "start_time")
+        )
+
+        return Response(
+            {
+                "doctor_id": doctor_id,
+                "date": timezone.localdate(),
+                "appointments": AppointmentQueueSerializer(queryset, many=True).data,
             }
         )
 
@@ -428,6 +585,145 @@ class CancelAppointmentAPIView(APIView):
         return Response({"appointment": AppointmentSerializer(appointment).data})
 
 
+class AppointmentStatusUpdateAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, appointment_id):
+        appointment = get_object_or_404(_get_appointment_queryset(), id=appointment_id)
+        serializer = AppointmentStatusUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        new_status = serializer.validated_data["status"]
+
+        if appointment.status == AppointmentStatus.CANCELLED:
+            return Response(
+                {"detail": "Cancelled appointments cannot be updated."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if new_status == AppointmentStatus.COMPLETED:
+            consultation_record = getattr(appointment, "consultation_record", None)
+            if consultation_record is None:
+                return Response(
+                    {"detail": "A consultation record is required before marking an appointment as completed."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if appointment.status == AppointmentStatus.NO_SHOW:
+                return Response(
+                    {"detail": "A no-show appointment cannot be marked as completed."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        if new_status == AppointmentStatus.NO_SHOW:
+            if appointment.date > timezone.localdate():
+                return Response(
+                    {"detail": "Future appointments cannot be marked as no-show."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if appointment.status == AppointmentStatus.COMPLETED:
+                return Response(
+                    {"detail": "A completed appointment cannot be marked as no-show."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if getattr(appointment, "consultation_record", None) is not None:
+                return Response(
+                    {"detail": "Appointments with a consultation record cannot be marked as no-show."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        appointment.status = new_status
+        appointment.save(update_fields=["status"])
+        return Response({"appointment": AppointmentSerializer(appointment).data})
+
+
+class AppointmentSearchAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        queryset = _apply_appointment_filters(_get_appointment_queryset(), request.query_params).order_by(
+            "-date",
+            "start_time",
+        )
+        return Response(
+            {
+                "count": queryset.count(),
+                "results": AppointmentSerializer(queryset, many=True).data,
+            }
+        )
+
+
+class AdminAnalyticsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        queryset = _apply_appointment_filters(_get_appointment_queryset(), request.query_params)
+        total_appointments = queryset.count()
+        no_show_count = queryset.filter(status=AppointmentStatus.NO_SHOW).count()
+        no_show_rate = round((no_show_count / total_appointments) * 100, 2) if total_appointments else 0.0
+
+        peak_hours = [
+            {"time": row["start_time"], "count": row["count"]}
+            for row in queryset.values("start_time").annotate(count=Count("id")).order_by("-count", "start_time")
+        ]
+
+        return Response(
+            {
+                "total_appointments": total_appointments,
+                "no_show_count": no_show_count,
+                "no_show_rate": no_show_rate,
+                "peak_hours": peak_hours,
+            }
+        )
+
+
+class AppointmentCSVExportView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        queryset = _apply_appointment_filters(_get_appointment_queryset(), request.query_params).order_by(
+            "-date",
+            "start_time",
+        )
+
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = (
+            f'attachment; filename="appointments-{timezone.localdate().isoformat()}.csv"'
+        )
+
+        writer = csv.writer(response)
+        writer.writerow(
+            [
+                "Appointment ID",
+                "Patient Name",
+                "Patient Username",
+                "Doctor Username",
+                "Date",
+                "Start Time",
+                "End Time",
+                "Status",
+                "Check In Time",
+            ]
+        )
+
+        for appointment in queryset:
+            consultation_record = getattr(appointment, "consultation_record", None)
+            writer.writerow(
+                [
+                    appointment.id,
+                    appointment.patient.user.get_full_name().strip() or appointment.patient.user.username,
+                    appointment.patient.user.username,
+                    appointment.doctor.user.username,
+                    appointment.date,
+                    appointment.start_time,
+                    appointment.end_time,
+                    appointment.get_status_display(),
+                    consultation_record.check_in_time if consultation_record else "",
+                ]
+            )
+
+        return response
+
+
 class PatientAppointmentsAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -439,7 +735,11 @@ class PatientAppointmentsAPIView(APIView):
         today = timezone.localdate()
         current_time = timezone.localtime().time()
 
-        upcoming = patient.appointments.filter(date__gte=today).exclude(status=AppointmentStatus.CANCELLED).order_by("date", "start_time")
+        upcoming = (
+            patient.appointments.filter(date__gte=today)
+            .exclude(status__in=[AppointmentStatus.CANCELLED, AppointmentStatus.COMPLETED, AppointmentStatus.NO_SHOW])
+            .order_by("date", "start_time")
+        )
         past = patient.appointments.filter(date__lt=today).exclude(status=AppointmentStatus.CANCELLED)
         cancelled = patient.appointments.filter(status=AppointmentStatus.CANCELLED)
 
