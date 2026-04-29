@@ -8,6 +8,7 @@
 	<p>Welcome, <strong>{{ request.user.username }}</strong>.</p>
 	<p class="muted">You can monitor your appointments and consultation updates from here.</p>
 	<div class="action-row">
+		<a class="btn btn-primary" href="{% url 'appointment_list' %}">Book an Appointment</a>
 		<a class="btn btn-primary" href="/">Back to Home</a>
 	</div>
 </section>

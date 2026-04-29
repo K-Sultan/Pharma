@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}Doctor Schedule{% endblock %}
+
+{% block content %}
+<section class="panel-card">
+    <p class="kicker">Booking</p>
+    <h1>{% if appointment_to_reschedule %}Reschedule{% else %}{{ doctor.user.username }}{% endif %}</h1>
+    <p class="muted">Pick a date to inspect available slots, then confirm the time you want.</p>
+
+    {% if appointment_to_reschedule %}
+        <p class="muted">Rescheduling {{ appointment_to_reschedule.date }} at {{ appointment_to_reschedule.start_time|time:'H:i' }}.</p>
+    {% endif %}
+
+    <form method="get" class="stack-form schedule-editor">
+        <label for="id_date">Select date</label>
+        <input id="id_date" type="date" name="date" value="{{ selected_date }}" min="{{ tomorrow|date:'Y-m-d' }}">
+        <div class="action-row">
+            <button class="btn btn-primary" type="submit">Check Availability</button>
+        </div>
+    </form>
+
+    {% if slots %}
+        <div class="card-list">
+            <h2>Available Slots</h2>
+            <div class="slot-grid">
+                {% for start, end in slots %}
+                    <form class="slot-form" method="post" action="{{ slot_action_url }}">
+                        {% csrf_token %}
+                        <input type="hidden" name="date" value="{{ selected_date }}">
+                        <input type="hidden" name="start_time" value="{{ start|time:'H:i:s' }}">
+                        <input type="hidden" name="end_time" value="{{ end|time:'H:i:s' }}">
+                        <button class="btn btn-primary slot-button" type="submit">{{ start|time:'H:i' }} - {{ end|time:'H:i' }}</button>
+                    </form>
+                {% endfor %}
+            </div>
+        </div>
+    {% else %}
+        <p class="empty-state">No available slots for the selected date.</p>
+    {% endif %}
+</section>
+{% endblock %}
