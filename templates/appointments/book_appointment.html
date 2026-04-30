@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Book Appointment</h2>
+
+<p>You are booking with Dr. {{ doctor.user.first_name }} {{ doctor.user.last_name }}</p>
+
+<p>Booking logic will be implemented next.</p>
+
+<a href="{% url 'doctor_list' %}">Back to Doctors</a>
+{% endblock %}

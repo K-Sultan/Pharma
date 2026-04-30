@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Doctors</h2>
+
+<ul>
+    {% for doctor in doctors %}
+        <li>
+            Dr. {{ doctor.user.first_name }} {{ doctor.user.last_name }}
+            <a href="{% url 'doctor_slots' doctor.id %}">View Slots</a>
+        </li>
+    {% endfor %}
+</ul>
+{% endblock %}

@@ -37,6 +37,7 @@ class CustomUser(AbstractUser):
 	objects = CustomUserManager()
 
 	def clean(self):
+		
 		super().clean()
 		if self.role == UserRole.ADMIN:
 			self.is_staff = True

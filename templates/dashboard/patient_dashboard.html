@@ -1,14 +1,23 @@
 {% extends 'base.html' %}
 
-{% block title %}Patient Dashboard{% endblock %}
-
 {% block content %}
-<section class="panel-card">
-	<h2>Patient Dashboard</h2>
-	<p>Welcome, <strong>{{ request.user.username }}</strong>.</p>
-	<p class="muted">You can monitor your appointments and consultation updates from here.</p>
-	<div class="action-row">
-		<a class="btn btn-primary" href="/">Back to Home</a>
-	</div>
-</section>
+<div class="card">
+    <h1>Patient Dashboard</h1>
+    <p>Welcome, {{ request.user.username }}.</p>
+    <p>You can book appointments and view your consultation updates from here.</p>
+
+    <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px;">
+        <a class="btn btn-primary" href="{% url 'doctor_list' %}">
+            Book Appointment
+        </a>
+
+        <a class="btn btn-soft" href="{% url 'appointment_list' %}">
+            My Appointments
+        </a>
+
+        <a class="btn btn-soft" href="{% url 'consultation-list-create' %}">
+            My Consultations
+        </a>
+    </div>
+</div>
 {% endblock %}
