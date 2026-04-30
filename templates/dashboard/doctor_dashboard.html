@@ -8,6 +8,13 @@
 	<p>Welcome, <strong>{{ request.user.username }}</strong>.</p>
 	<p class="muted">Review your appointments and track patient consultations efficiently.</p>
 	<div class="action-row">
+		<a class="btn btn-primary" href="{% url 'doctor_queue' %}">
+    Today Queue
+</a>
+
+<a class="btn btn-soft" href="{% url 'doctor_schedule' %}">
+    Manage Schedule
+</a>
 		<a class="btn btn-primary" href="{% url 'doctor_schedule' %}">Manage My Schedule</a>
 		<a class="btn btn-primary" href="/">Back to Home</a>
 	</div>

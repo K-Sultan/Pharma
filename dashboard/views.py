@@ -2,6 +2,10 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import login_required
 
+from django.utils import timezone
+from appointments.models import Appointment, AppointmentStatus
+
+
 from accounts.decorators import role_required
 from accounts.forms import (
     DoctorCustomWorkDayExceptionForm,
@@ -168,3 +172,26 @@ def receptionist_dashboard(request):
 @role_required(UserRole.ADMIN)
 def admin_dashboard(request):
     return render(request, 'dashboard/admin_dashboard.html')
+
+
+@login_required
+@role_required(UserRole.DOCTOR)
+def doctor_queue_view(request):
+    doctor_profile = get_object_or_404(DoctorProfile, user=request.user)
+
+    today = timezone.localdate()
+
+    queue = (
+        Appointment.objects
+        .filter(
+            doctor=doctor_profile,
+            date=today,
+            status=AppointmentStatus.CHECKED_IN
+        )
+        .select_related('patient__user')
+        .order_by('start_time')
+    )
+
+    return render(request, 'dashboard/doctor_queue.html', {
+        'queue': queue
+    })

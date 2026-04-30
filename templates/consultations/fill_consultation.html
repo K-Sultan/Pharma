@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+    <p class="eyebrow">Consultation</p>
+    <h1>Fill Consultation</h1>
+
+    <p>
+        Patient:
+        {{ appointment.patient.user.first_name }}
+        {{ appointment.patient.user.last_name }}
+    </p>
+
+    <p>
+        Appointment:
+        {{ appointment.date }} |
+        {{ appointment.start_time }} - {{ appointment.end_time }}
+    </p>
+
+    <form method="POST">
+        {% csrf_token %}
+
+        <label>Notes</label>
+        <textarea name="notes" rows="4">{{ consultation.notes }}</textarea>
+
+        <label>Diagnosis</label>
+        <textarea name="diagnosis" rows="4">{{ consultation.diagnosis }}</textarea>
+
+        <label>Requested Tests</label>
+        <textarea name="requested_tests" rows="3">{{ consultation.requested_tests }}</textarea>
+
+        <hr>
+
+        <h3>Prescription Item</h3>
+
+        <label>Drug</label>
+        <input type="text" name="drug">
+
+        <label>Dose</label>
+        <input type="text" name="dose">
+
+        <label>Duration</label>
+        <input type="text" name="duration">
+
+        <br><br>
+
+        <button class="btn btn-primary" type="submit">
+            Save Consultation and Complete Appointment
+        </button>
+    </form>
+</div>
+{% endblock %}

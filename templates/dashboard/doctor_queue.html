@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+    <p class="eyebrow">Doctor</p>
+    <h1>Today Queue</h1>
+
+    {% if queue %}
+        {% for appointment in queue %}
+            <div class="card" style="margin-top: 16px;">
+                <h3>
+                    {{ appointment.patient.user.first_name }}
+                    {{ appointment.patient.user.last_name }}
+                </h3>
+
+                <p>
+                    Time:
+                    {{ appointment.start_time }} - {{ appointment.end_time }}
+                </p>
+
+                <p>Status: {{ appointment.get_status_display }}</p>
+
+                <a class="btn btn-primary"
+                href="{% url 'fill_consultation' appointment.id %}">
+                    Fill Consultation
+                </a>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>No checked-in patients for today.</p>
+    {% endif %}
+</div>
+{% endblock %}
