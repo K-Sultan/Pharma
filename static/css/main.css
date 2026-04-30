@@ -202,6 +202,57 @@ p {
     flex-wrap: wrap;
 }
 
+.card-list {
+    display: grid;
+    gap: 0.9rem;
+    margin-top: 1rem;
+}
+
+.item-card {
+    border-radius: var(--radius-md);
+    border: 1px solid var(--line);
+    background: rgba(8, 23, 53, 0.42);
+    padding: 0.95rem 1rem;
+}
+
+.item-card h3 {
+    margin-bottom: 0.4rem;
+}
+
+.item-card p {
+    margin: 0.25rem 0 0;
+}
+
+.doctor-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.slot-grid {
+    display: grid;
+    gap: 0.8rem;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.slot-form {
+    margin: 0;
+}
+
+.slot-button {
+    width: 100%;
+}
+
+.empty-state {
+    margin: 0;
+    padding: 0.95rem 1rem;
+    border-radius: var(--radius-md);
+    border: 1px dashed rgba(138, 168, 224, 0.35);
+    background: rgba(8, 23, 53, 0.26);
+    color: var(--text-1);
+}
+
 .btn {
     display: inline-flex;
     align-items: center;

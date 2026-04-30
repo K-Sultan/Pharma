@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block title %}Doctors{% endblock %}
+
+{% block content %}
+<section class="panel-card">
+    <p class="kicker">Appointments</p>
+    <h1>Choose a doctor</h1>
+    <p class="muted">Select a doctor to check their availability and continue to booking.</p>
+
+    <div class="card-list">
+        {% for doctor in doctors %}
+            <article class="item-card doctor-card">
+                <div>
+                    <h3>{{ doctor.user.username }}</h3>
+                    <p class="muted">Review availability and book a slot directly from the schedule view.</p>
+                </div>
+                <div class="action-row">
+                    <a class="btn btn-primary" href="{% url 'doctor_slots' doctor.id %}">View Schedule</a>
+                </div>
+            </article>
+        {% empty %}
+            <p class="empty-state">No doctors are available right now.</p>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}
