@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+    <p class="eyebrow">Patient Profile</p>
+    <h1>My Profile</h1>
+
+    <p><strong>Name:</strong> {{ request.user.first_name }} {{ request.user.last_name }}</p>
+    <p><strong>Username:</strong> {{ request.user.username }}</p>
+    <p><strong>Email:</strong> {{ request.user.email }}</p>
+
+    <hr>
+
+    <form method="POST">
+        {% csrf_token %}
+
+        <label>Date of Birth</label>
+        {{ form.date_of_birth }}
+
+        <label>Phone</label>
+        {{ form.phone }}
+
+        <label>Address</label>
+        {{ form.address }}
+
+        <label>Emergency Contact</label>
+        {{ form.emergency_contact }}
+
+        <br><br>
+
+        <button class="btn btn-primary" type="submit">
+            Save Profile
+        </button>
+
+        <a class="btn btn-soft" href="{% url 'patient_dashboard' %}">
+            Back to Dashboard
+        </a>
+    </form>
+</div>
+{% endblock %}

@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.db import transaction
 
 from .decorators import admin_staff_required
-from .forms import DoctorCreateForm, PatientRegistrationForm, ReceptionistCreateForm
+from .forms import DoctorCreateForm, PatientRegistrationForm, ReceptionistCreateForm,PatientProfileUpdateForm
 from .models import DoctorProfile, PatientProfile, ReceptionistProfile, UserRole
 
 def register_view(request):
@@ -91,3 +91,27 @@ def create_receptionist_view(request):
         form = ReceptionistCreateForm()
 
     return render(request, 'accounts/create_receptionist.html', {'form': form})
+
+
+@login_required
+def patient_profile_view(request):
+    if request.user.role != UserRole.PATIENT:
+        messages.error(request, 'Only patients can access this page.')
+        return redirect('dashboard_redirect')
+
+    profile, created = PatientProfile.objects.get_or_create(user=request.user)
+
+    if request.method == 'POST':
+        form = PatientProfileUpdateForm(request.POST, instance=profile)
+
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Profile updated successfully.')
+            return redirect('patient_profile')
+    else:
+        form = PatientProfileUpdateForm(instance=profile)
+
+    return render(request, 'accounts/patient_profile.html', {
+        'form': form,
+        'profile': profile,
+    })

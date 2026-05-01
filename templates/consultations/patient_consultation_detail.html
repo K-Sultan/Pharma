@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+    <p class="eyebrow">Read-only Summary</p>
+    <h1>Consultation Summary</h1>
+
+    <p>
+        <strong>Doctor:</strong>
+        Dr. {{ consultation.appointment.doctor.user.first_name }}
+        {{ consultation.appointment.doctor.user.last_name }}
+    </p>
+
+    <p>
+        <strong>Date:</strong>
+        {{ consultation.appointment.date }}
+    </p>
+
+    <p>
+        <strong>Time:</strong>
+        {{ consultation.appointment.start_time }}
+        -
+        {{ consultation.appointment.end_time }}
+    </p>
+
+    <hr>
+
+    <h3>Diagnosis</h3>
+    <p>{{ consultation.diagnosis|default:"No diagnosis written." }}</p>
+
+    <h3>Notes</h3>
+    <p>{{ consultation.notes|default:"No notes written." }}</p>
+
+    <h3>Requested Tests</h3>
+    <p>{{ consultation.requested_tests|default:"No tests requested." }}</p>
+
+    <h3>Prescription</h3>
+
+    {% if consultation.prescriptions.all %}
+        <ul>
+            {% for item in consultation.prescriptions.all %}
+                <li>
+                    <strong>{{ item.drug }}</strong>
+                    — {{ item.dose }}
+                    — {{ item.duration }}
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No prescription items.</p>
+    {% endif %}
+
+    <hr>
+
+    <p><em>This summary is read-only. You cannot edit medical consultation records.</em></p>
+
+    <a class="btn btn-soft" href="{% url 'patient_consultations' %}">
+        Back to My Consultations
+    </a>
+</div>
+{% endblock %}

@@ -28,6 +28,7 @@ from .serializers import (
     AppointmentStatusUpdateSerializer,
     DoctorProfileSerializer,
 )
+from accounts.permissions import IsDoctor, IsPatient, IsReceptionist, IsAdmin
 
 
 def _get_patient_profile_or_none(user):
@@ -460,7 +461,7 @@ class AppointmentCheckInAPIView(APIView):
 
 
 class DoctorDailyQueueAPIView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsReceptionist | IsAdmin]
 
     def get(self, request, doctor_id):
         queryset = (
@@ -483,7 +484,7 @@ class DoctorDailyQueueAPIView(APIView):
 
 
 class BookAppointmentAPIView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsPatient]
 
     def post(self, request, doctor_id):
         doctor = get_object_or_404(DoctorProfile, id=doctor_id)
@@ -586,7 +587,7 @@ class CancelAppointmentAPIView(APIView):
 
 
 class AppointmentStatusUpdateAPIView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsDoctor]
 
     def post(self, request, appointment_id):
         appointment = get_object_or_404(_get_appointment_queryset(), id=appointment_id)
@@ -653,7 +654,7 @@ class AppointmentSearchAPIView(APIView):
 
 
 class AdminAnalyticsView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAdmin]
 
     def get(self, request):
         queryset = _apply_appointment_filters(_get_appointment_queryset(), request.query_params)

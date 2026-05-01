@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from .models import DoctorScheduleException, DoctorScheduleExceptionType, DoctorWeeklySchedule, UserRole
-
+from .models import PatientProfile
 
 User = get_user_model()
 
@@ -185,3 +185,19 @@ class DoctorCustomWorkDayExceptionForm(forms.ModelForm):
         if commit:
             schedule_exception.save()
         return schedule_exception
+    
+    
+class PatientProfileUpdateForm(forms.ModelForm):
+    class Meta:
+        model = PatientProfile
+        fields = [
+            'date_of_birth',
+            'phone',
+            'address',
+            'emergency_contact',
+        ]
+
+        widgets = {
+            'date_of_birth': forms.DateInput(attrs={'type': 'date'}),
+            'address': forms.Textarea(attrs={'rows': 3}),
+        }
