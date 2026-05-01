@@ -8,6 +8,7 @@
 	<p>Welcome, <strong>{{ request.user.username }}</strong>.</p>
 	<p class="muted">Review your appointments and track patient consultations efficiently.</p>
 	<div class="action-row">
+		<a class="btn btn-primary" href="{% url 'appointments_hub' %}">Appointments</a>
 		<a class="btn btn-primary" href="{% url 'doctor_queue' %}">
     Today Queue
 </a>

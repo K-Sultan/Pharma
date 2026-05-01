@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
-from .models import Appointment
+from .models import Appointment, AppointmentReschedule
 
 @admin.register(Appointment)
 class AppointmentAdmin(admin.ModelAdmin):
@@ -32,4 +32,25 @@ class AppointmentAdmin(admin.ModelAdmin):
         return 'No Consultation'
     consultation_link.short_description = 'Consultation'
     consultation_link.allow_tags = True
+
+
+@admin.register(AppointmentReschedule)
+class AppointmentRescheduleAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "appointment",
+        "old_date",
+        "old_start_time",
+        "old_end_time",
+        "new_date",
+        "new_start_time",
+        "new_end_time",
+        "changed_at",
+    )
+    list_filter = ("changed_at", "new_date", "old_date")
+    search_fields = (
+        "appointment__patient__user__username",
+        "appointment__doctor__user__username",
+        "reason",
+    )
 

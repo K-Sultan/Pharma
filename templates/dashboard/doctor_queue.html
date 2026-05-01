@@ -9,8 +9,7 @@
         {% for appointment in queue %}
             <div class="card" style="margin-top: 16px;">
                 <h3>
-                    {{ appointment.patient.user.first_name }}
-                    {{ appointment.patient.user.last_name }}
+                    {{ appointment.patient.user.get_full_name|default:appointment.patient.user.username }}
                 </h3>
 
                 <p>

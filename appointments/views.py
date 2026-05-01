@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import models
 from django.db.models import Count, Q
+from django.db import transaction
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -15,12 +16,12 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from accounts.models import DoctorProfile
+from accounts.models import DoctorProfile, UserRole
 from appointments.utils import get_available_slots
 from consultations.models import ConsultationRecord
 from consultations.serializers import ConsultationRecordSerializer
 
-from .models import Appointment, AppointmentStatus
+from .models import Appointment, AppointmentReschedule, AppointmentStatus
 from .serializers import (
     AppointmentQueueSerializer,
     AppointmentSerializer,
@@ -118,6 +119,78 @@ def _parse_time_value(value):
     return value
 
 
+def _user_can_manage_appointments(user):
+    return bool(
+        user
+        and user.is_authenticated
+        and (user.is_superuser or user.role in {UserRole.DOCTOR, UserRole.RECEPTIONIST, UserRole.ADMIN})
+    )
+
+
+def _appointment_management_queryset():
+    return _get_appointment_queryset()
+
+
+def _staff_appointment_filter_counts(queryset):
+    return {
+        "all": queryset.count(),
+        "pending": queryset.filter(status=AppointmentStatus.PENDING).count(),
+        "confirmed": queryset.filter(status=AppointmentStatus.CONFIRMED).count(),
+        "declined": queryset.filter(status=AppointmentStatus.DECLINED).count(),
+        "no_show": queryset.filter(status=AppointmentStatus.NO_SHOW).count(),
+    }
+
+
+def _apply_staff_appointment_tab(queryset, tab):
+    if tab == "pending":
+        return queryset.filter(status=AppointmentStatus.PENDING)
+    if tab == "confirmed":
+        return queryset.filter(status=AppointmentStatus.CONFIRMED)
+    if tab == "declined":
+        return queryset.filter(status=AppointmentStatus.DECLINED)
+    if tab == "no_show":
+        return queryset.filter(status=AppointmentStatus.NO_SHOW)
+    return queryset
+
+
+def _mark_overdue_pending_appointments_as_no_show(queryset):
+    today = timezone.localdate()
+    current_time = timezone.localtime().time()
+
+    overdue_pending = queryset.filter(status=AppointmentStatus.PENDING).filter(
+        models.Q(date__lt=today) | models.Q(date=today, start_time__lte=current_time)
+    )
+
+    return overdue_pending.update(status=AppointmentStatus.NO_SHOW)
+
+
+def _update_staff_appointment_status(*, appointment, new_status):
+    if appointment.status == AppointmentStatus.CANCELLED:
+        return None, "cancelled"
+
+    if new_status not in {AppointmentStatus.CONFIRMED, AppointmentStatus.DECLINED}:
+        return None, "invalid"
+
+    if appointment.status == new_status:
+        return appointment, "unchanged"
+
+    appointment.status = new_status
+    appointment.save(update_fields=["status"])
+    return appointment, None
+
+
+def _parse_slot_value(value):
+    if not value:
+        return None, None
+
+    try:
+        start_time_value, end_time_value = value.split("|", 1)
+    except ValueError:
+        return None, None
+
+    return _parse_time_value(start_time_value), _parse_time_value(end_time_value)
+
+
 def _book_or_reschedule_appointment(*, doctor, patient, date, start_time, end_time, existing_appointment=None):
     if date <= timezone.localdate():
         return None, "future_only"
@@ -153,6 +226,36 @@ def _book_or_reschedule_appointment(*, doctor, patient, date, start_time, end_ti
 
     existing_appointment.save(update_fields=["date", "start_time", "end_time", "status"])
     return existing_appointment, None
+
+
+def _create_reschedule_record(
+    *,
+    appointment,
+    old_date,
+    old_start_time,
+    old_end_time,
+    new_date,
+    new_start_time,
+    new_end_time,
+    reason="",
+):
+    if (
+        old_date == new_date
+        and old_start_time == new_start_time
+        and old_end_time == new_end_time
+    ):
+        return None
+
+    return AppointmentReschedule.objects.create(
+        appointment=appointment,
+        old_date=old_date,
+        old_start_time=old_start_time,
+        old_end_time=old_end_time,
+        new_date=new_date,
+        new_start_time=new_start_time,
+        new_end_time=new_end_time,
+        reason=reason,
+    )
 
 
 def _build_doctor_slots_context(request, doctor_id):
@@ -237,6 +340,8 @@ def book_appointment(request, doctor_id):
     date = request.POST.get("date")
     start_time = _parse_time_value(request.POST.get("start_time"))
     end_time = _parse_time_value(request.POST.get("end_time"))
+    if start_time is None or end_time is None:
+        start_time, end_time = _parse_slot_value(request.POST.get("slot"))
 
     if not date or not start_time or not end_time:
         messages.error(request, "Please choose a valid appointment slot.")
@@ -283,20 +388,40 @@ def reschedule_appointment(request, appointment_id):
     date = request.POST.get("date")
     start_time = _parse_time_value(request.POST.get("start_time"))
     end_time = _parse_time_value(request.POST.get("end_time"))
+    if start_time is None or end_time is None:
+        start_time, end_time = _parse_slot_value(request.POST.get("slot"))
+    reason = (request.POST.get("reason") or "").strip()
 
     if not date or not start_time or not end_time:
         messages.error(request, "Please choose a valid appointment slot.")
         return redirect(f"{reverse('doctor_slots', args=[appointment.doctor.id])}?appointment={appointment.id}")
 
     parsed_date = datetime.strptime(date, "%Y-%m-%d").date()
-    _, error_code = _book_or_reschedule_appointment(
-        doctor=appointment.doctor,
-        patient=appointment.patient,
-        date=parsed_date,
-        start_time=start_time,
-        end_time=end_time,
-        existing_appointment=appointment,
-    )
+    old_date = appointment.date
+    old_start_time = appointment.start_time
+    old_end_time = appointment.end_time
+
+    with transaction.atomic():
+        _, error_code = _book_or_reschedule_appointment(
+            doctor=appointment.doctor,
+            patient=appointment.patient,
+            date=parsed_date,
+            start_time=start_time,
+            end_time=end_time,
+            existing_appointment=appointment,
+        )
+
+        if error_code is None:
+            _create_reschedule_record(
+                appointment=appointment,
+                old_date=old_date,
+                old_start_time=old_start_time,
+                old_end_time=old_end_time,
+                new_date=parsed_date,
+                new_start_time=start_time,
+                new_end_time=end_time,
+                reason=reason,
+            )
 
     if error_code == "future_only":
         messages.error(request, "You can only reschedule appointments to tomorrow or later.")
@@ -366,6 +491,67 @@ def patient_appointments(request):
         "past": past,
         "cancelled": cancelled,
     })
+
+
+@login_required
+def appointments_hub(request):
+    if not _user_can_manage_appointments(request.user):
+        messages.error(request, "You do not have permission to access this page.")
+        return redirect("dashboard_redirect")
+
+    tab = request.GET.get("tab") or "pending"
+    queryset = _appointment_management_queryset()
+
+    _mark_overdue_pending_appointments_as_no_show(queryset)
+
+    if request.user.role == UserRole.DOCTOR and not request.user.is_superuser:
+        doctor_profile = get_object_or_404(DoctorProfile, user=request.user)
+        queryset = queryset.filter(doctor=doctor_profile)
+
+    appointments = _apply_staff_appointment_tab(queryset, tab).order_by("date", "start_time")
+
+    return render(request, "appointments/manage_appointments.html", {
+        "appointments": appointments,
+        "tab": tab,
+        "counts": _staff_appointment_filter_counts(queryset),
+    })
+
+
+@login_required
+def staff_appointment_status_update(request, appointment_id):
+    if not _user_can_manage_appointments(request.user):
+        messages.error(request, "You do not have permission to update appointments.")
+        return redirect("dashboard_redirect")
+
+    if request.method != "POST":
+        return redirect("appointments_hub")
+
+    appointment = get_object_or_404(_get_appointment_queryset(), id=appointment_id)
+    action = request.POST.get("action")
+    tab = request.POST.get("tab") or "pending"
+
+    if action == "confirm":
+        new_status = AppointmentStatus.CONFIRMED
+        success_message = "Appointment confirmed."
+    elif action == "decline":
+        new_status = AppointmentStatus.DECLINED
+        success_message = "Appointment declined."
+    else:
+        messages.error(request, "Invalid appointment action.")
+        return redirect(f"{reverse('appointments_hub')}?tab={tab}")
+
+    _, error_code = _update_staff_appointment_status(appointment=appointment, new_status=new_status)
+
+    if error_code == "cancelled":
+        messages.error(request, "Cancelled appointments cannot be updated.")
+    elif error_code == "unchanged":
+        messages.info(request, "That appointment is already in the requested status.")
+    elif error_code == "invalid":
+        messages.error(request, "Unsupported status transition.")
+    else:
+        messages.success(request, success_message)
+
+    return redirect(f"{reverse('appointments_hub')}?tab={tab}")
 
 
 class AppointmentApiRootView(APIView):
@@ -537,15 +723,33 @@ class RescheduleAppointmentAPIView(APIView):
 
         serializer = AppointmentSlotSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        reason = (serializer.validated_data.get("reason") or "").strip()
 
-        appointment, error_code = _book_or_reschedule_appointment(
-            doctor=appointment.doctor,
-            patient=appointment.patient,
-            date=serializer.validated_data["date"],
-            start_time=serializer.validated_data["start_time"],
-            end_time=serializer.validated_data["end_time"],
-            existing_appointment=appointment,
-        )
+        old_date = appointment.date
+        old_start_time = appointment.start_time
+        old_end_time = appointment.end_time
+
+        with transaction.atomic():
+            appointment, error_code = _book_or_reschedule_appointment(
+                doctor=appointment.doctor,
+                patient=appointment.patient,
+                date=serializer.validated_data["date"],
+                start_time=serializer.validated_data["start_time"],
+                end_time=serializer.validated_data["end_time"],
+                existing_appointment=appointment,
+            )
+
+            if error_code is None:
+                _create_reschedule_record(
+                    appointment=appointment,
+                    old_date=old_date,
+                    old_start_time=old_start_time,
+                    old_end_time=old_end_time,
+                    new_date=serializer.validated_data["date"],
+                    new_start_time=serializer.validated_data["start_time"],
+                    new_end_time=serializer.validated_data["end_time"],
+                    reason=reason,
+                )
 
         if error_code == "future_only":
             return Response(
@@ -587,7 +791,7 @@ class CancelAppointmentAPIView(APIView):
 
 
 class AppointmentStatusUpdateAPIView(APIView):
-    permission_classes = [IsDoctor]
+    permission_classes = [IsDoctor | IsReceptionist | IsAdmin]
 
     def post(self, request, appointment_id):
         appointment = get_object_or_404(_get_appointment_queryset(), id=appointment_id)
@@ -595,6 +799,17 @@ class AppointmentStatusUpdateAPIView(APIView):
         serializer.is_valid(raise_exception=True)
 
         new_status = serializer.validated_data["status"]
+
+        if new_status in {AppointmentStatus.CONFIRMED, AppointmentStatus.DECLINED}:
+            appointment, error_code = _update_staff_appointment_status(appointment=appointment, new_status=new_status)
+
+            if error_code == "cancelled":
+                return Response(
+                    {"detail": "Cancelled appointments cannot be updated."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            return Response({"appointment": AppointmentSerializer(appointment).data})
 
         if appointment.status == AppointmentStatus.CANCELLED:
             return Response(

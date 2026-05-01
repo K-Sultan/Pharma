@@ -71,3 +71,4 @@ class AppointmentSlotSerializer(serializers.Serializer):
     date = serializers.DateField()
     start_time = serializers.TimeField()
     end_time = serializers.TimeField()
+    reason = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=1000)

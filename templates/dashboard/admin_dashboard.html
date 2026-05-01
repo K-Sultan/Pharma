@@ -8,6 +8,7 @@
 	<p>Welcome, <strong>{{ request.user.username }}</strong>.</p>
 	<p class="muted">Manage users, schedules, and overall clinic activity from one place.</p>
 	<div class="action-row">
+		<a class="btn btn-primary" href="{% url 'appointments_hub' %}">Appointments</a>
 		<a class="btn btn-primary" href="{% url 'create_doctor' %}">Create Doctor</a>
 		<a class="btn btn-primary" href="{% url 'create_receptionist' %}">Create Receptionist</a>
 		<a class="btn btn-primary" href="/">Back to Home</a>

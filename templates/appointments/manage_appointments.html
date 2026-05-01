@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}Appointments Hub{% endblock %}
+
+{% block content %}
+<section class="panel-card">
+    <p class="kicker">Appointments</p>
+    <h1>Manage Appointments</h1>
+    <p class="muted">Review pending requests, confirm or decline them, and switch between appointment states from one place.</p>
+
+    <div class="action-row">
+        <a class="btn {% if tab == 'pending' %}btn-primary{% else %}btn-soft{% endif %}" href="{% url 'appointments_hub' %}?tab=pending">Pending ({{ counts.pending }})</a>
+        <a class="btn {% if tab == 'confirmed' %}btn-primary{% else %}btn-soft{% endif %}" href="{% url 'appointments_hub' %}?tab=confirmed">Confirmed ({{ counts.confirmed }})</a>
+        <a class="btn {% if tab == 'declined' %}btn-primary{% else %}btn-soft{% endif %}" href="{% url 'appointments_hub' %}?tab=declined">Declined ({{ counts.declined }})</a>
+        <a class="btn {% if tab == 'no_show' %}btn-primary{% else %}btn-soft{% endif %}" href="{% url 'appointments_hub' %}?tab=no_show">No Show ({{ counts.no_show }})</a>
+        <a class="btn {% if tab == 'all' %}btn-primary{% else %}btn-soft{% endif %}" href="{% url 'appointments_hub' %}?tab=all">All ({{ counts.all }})</a>
+    </div>
+
+    {% if appointments %}
+        <div class="card-list">
+            {% for appointment in appointments %}
+                <article class="item-card">
+                    <h3>{{ appointment.patient.user.get_full_name|default:appointment.patient.user.username }} with Dr. {{ appointment.doctor.user.username }}</h3>
+                    <p class="muted">Date: {{ appointment.date }} | Time: {{ appointment.start_time|time:'H:i' }} - {{ appointment.end_time|time:'H:i' }}</p>
+                    <p class="muted">Status: {{ appointment.get_status_display }}</p>
+                    <p class="muted">Patient username: {{ appointment.patient.user.username }}</p>
+                    <p class="muted">Doctor username: {{ appointment.doctor.user.username }}</p>
+
+                    {% if tab == 'pending' %}
+                        <div class="action-row">
+                            <form method="post" action="{% url 'staff_appointment_status_update' appointment.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="confirm">
+                                <input type="hidden" name="tab" value="{{ tab }}">
+                                <button class="btn btn-primary" type="submit">Confirm</button>
+                            </form>
+                            <form method="post" action="{% url 'staff_appointment_status_update' appointment.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="decline">
+                                <input type="hidden" name="tab" value="{{ tab }}">
+                                <button class="btn btn-soft" type="submit">Decline</button>
+                            </form>
+                        </div>
+                    {% endif %}
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="empty-state">No appointments found for this tab.</p>
+    {% endif %}
+</section>
+{% endblock %}

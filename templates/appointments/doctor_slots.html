@@ -10,11 +10,15 @@
 
     {% if appointment_to_reschedule %}
         <p class="muted">Rescheduling {{ appointment_to_reschedule.date }} at {{ appointment_to_reschedule.start_time|time:'H:i' }}.</p>
+        <p class="muted">Add an optional reason for the reschedule before picking a new slot.</p>
     {% endif %}
 
     <form method="get" class="stack-form schedule-editor">
         <label for="id_date">Select date</label>
         <input id="id_date" type="date" name="date" value="{{ selected_date }}" min="{{ tomorrow|date:'Y-m-d' }}">
+        {% if appointment_to_reschedule %}
+            <input type="hidden" name="appointment" value="{{ appointment_to_reschedule.id }}">
+        {% endif %}
         <div class="action-row">
             <button class="btn btn-primary" type="submit">Check Availability</button>
         </div>
@@ -23,17 +27,19 @@
     {% if slots %}
         <div class="card-list">
             <h2>Available Slots</h2>
-            <div class="slot-grid">
+            <form class="stack-form" method="post" action="{{ slot_action_url }}">
+                {% csrf_token %}
+                <input type="hidden" name="date" value="{{ selected_date }}">
+                {% if appointment_to_reschedule %}
+                    <label for="reschedule_reason" class="muted">Reason for reschedule (optional)</label>
+                    <textarea id="reschedule_reason" name="reason" rows="2" placeholder="Why do you need this change?"></textarea>
+                {% endif %}
+                <div class="slot-grid">
                 {% for start, end in slots %}
-                    <form class="slot-form" method="post" action="{{ slot_action_url }}">
-                        {% csrf_token %}
-                        <input type="hidden" name="date" value="{{ selected_date }}">
-                        <input type="hidden" name="start_time" value="{{ start|time:'H:i:s' }}">
-                        <input type="hidden" name="end_time" value="{{ end|time:'H:i:s' }}">
-                        <button class="btn btn-primary slot-button" type="submit">{{ start|time:'H:i' }} - {{ end|time:'H:i' }}</button>
-                    </form>
+                    <button class="btn btn-primary slot-button" type="submit" name="slot" value="{{ start|time:'H:i:s' }}|{{ end|time:'H:i:s' }}">{{ start|time:'H:i' }} - {{ end|time:'H:i' }}</button>
                 {% endfor %}
-            </div>
+                </div>
+            </form>
         </div>
     {% else %}
         <p class="empty-state">No available slots for the selected date.</p>

@@ -3,11 +3,13 @@ from . import views
 
 urlpatterns = [
     path('', views.appointment_list_view, name='appointment_list'),
+    path('manage/', views.appointments_hub, name='appointments_hub'),
     path("doctors/", views.doctor_list, name="doctor_list"),
     path("doctors/<int:doctor_id>/", views.doctor_slots, name="doctor_slots"),
     path("doctors/<int:doctor_id>/book/", views.book_appointment, name="book_appointment"),
     path("appointments/<int:appointment_id>/reschedule/", views.reschedule_appointment, name="reschedule_appointment"),
     path("appointments/<int:appointment_id>/cancel/", views.cancel_appointment, name="cancel_appointment"),
+    path("appointments/<int:appointment_id>/staff-status/", views.staff_appointment_status_update, name="staff_appointment_status_update"),
     path("appointments/", views.patient_appointments, name="patient_appointments"),
     path("api/", views.AppointmentApiRootView.as_view(), name="appointment_api_root"),
     path("api/doctors/", views.DoctorListAPIView.as_view(), name="doctor_list_api"),
