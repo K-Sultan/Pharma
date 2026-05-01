@@ -4,18 +4,18 @@ from accounts.models import UserRole
 
 class IsPatient(BasePermission):
     def has_permission(self, request, view):
-        return request.user.role == UserRole.PATIENT
+        return bool(request.user and request.user.is_authenticated and request.user.role == UserRole.PATIENT)
     
 class IsDoctor(BasePermission):
     def has_permission(self, request, view):
-        return request.user.role == UserRole.DOCTOR
+        return bool(request.user and request.user.is_authenticated and request.user.role == UserRole.DOCTOR)
 
 
 class IsReceptionist(BasePermission):
     def has_permission(self, request, view):
-        return request.user.role == UserRole.RECEPTIONIST
+        return bool(request.user and request.user.is_authenticated and request.user.role == UserRole.RECEPTIONIST)
 
 
 class IsAdmin(BasePermission):
     def has_permission(self, request, view):
-        return request.user.role == UserRole.ADMIN or request.user.is_superuser
+        return bool(request.user and request.user.is_authenticated and (request.user.role == UserRole.ADMIN or request.user.is_superuser))

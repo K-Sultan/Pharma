@@ -7,4 +7,5 @@ urlpatterns = [
     path('fill/<int:appointment_id>/', views.fill_consultation_view, name='fill_consultation'),
     path('my/', views.patient_consultations_view, name='patient_consultations'),
     path('my/<int:consultation_id>/', views.patient_consultation_detail_view, name='patient_consultation_detail'),
+    path('api/my/<int:pk>/', views.PatientConsultationSummaryAPIView.as_view(), name='patient-consultation-api-detail'),
 ]

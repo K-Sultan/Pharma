@@ -1,6 +1,6 @@
 from rest_framework import generics, permissions
 from .models import ConsultationRecord
-from .serializers import ConsultationRecordSerializer
+from .serializers import ConsultationRecordSerializer, PatientConsultationSummarySerializer
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -10,7 +10,7 @@ from accounts.decorators import role_required
 from accounts.models import UserRole
 from appointments.models import Appointment, AppointmentStatus
 from .models import ConsultationRecord, PrescriptionItem
-from accounts.permissions import IsDoctor
+from accounts.permissions import IsDoctor, IsPatient
 
 class ConsultationRecordListCreateView(generics.ListCreateAPIView):
     queryset = ConsultationRecord.objects.select_related("appointment").prefetch_related("prescriptions")
@@ -22,6 +22,18 @@ class ConsultationRecordDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ConsultationRecordSerializer
     permission_classes = [IsDoctor]
 
+class PatientConsultationSummaryAPIView(generics.RetrieveAPIView):
+    serializer_class = PatientConsultationSummarySerializer
+    permission_classes = [IsPatient]
+
+    def get_queryset(self):
+        return ConsultationRecord.objects.filter(
+            appointment__patient__user=self.request.user,
+            appointment__status=AppointmentStatus.COMPLETED
+        ).select_related(
+            "appointment", 
+            "appointment__doctor__user"
+        ).prefetch_related("prescriptions")
 
 
 @login_required
