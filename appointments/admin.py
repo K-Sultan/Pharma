@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Appointment, AppointmentRescheduleHistory
+from .models import Appointment, AppointmentReschedule
 
 
 @admin.register(Appointment)
@@ -20,8 +20,8 @@ class AppointmentAdmin(admin.ModelAdmin):
     )
 
 
-@admin.register(AppointmentRescheduleHistory)
-class AppointmentRescheduleHistoryAdmin(admin.ModelAdmin):
+@admin.register(AppointmentReschedule)
+class AppointmentRescheduleAdmin(admin.ModelAdmin):
     list_display = (
         "appointment",
         "old_date",

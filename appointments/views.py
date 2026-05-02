@@ -16,12 +16,12 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from accounts.models import DoctorProfile, UserRole
+from accounts.models import DoctorProfile, PatientProfile, UserRole
 from appointments.utils import get_available_slots
 from consultations.models import ConsultationRecord
 from consultations.serializers import ConsultationRecordSerializer
 
-from .models import Appointment, AppointmentReschedule, AppointmentStatus,AppointmentRescheduleHistory
+from .models import Appointment, AppointmentReschedule, AppointmentStatus
 from .serializers import (
     AppointmentQueueSerializer,
     AppointmentSerializer,
@@ -71,6 +71,13 @@ def _apply_appointment_filters(queryset, params):
         except (TypeError, ValueError):
             raise ValidationError({"doctor_id": "Doctor id must be an integer."})
 
+    patient_id = params.get("patient_id")
+    if patient_id:
+        try:
+            queryset = queryset.filter(patient_id=int(patient_id))
+        except (TypeError, ValueError):
+            raise ValidationError({"patient_id": "Patient id must be an integer."})
+
     patient_name = params.get("patient_name")
     if patient_name:
         queryset = queryset.filter(
@@ -78,6 +85,18 @@ def _apply_appointment_filters(queryset, params):
             | Q(patient__user__first_name__icontains=patient_name)
             | Q(patient__user__last_name__icontains=patient_name)
         )
+
+    search_value = params.get("search")
+    if search_value:
+        search_value = search_value.strip()
+        if search_value.isdigit():
+            queryset = queryset.filter(id=int(search_value))
+        else:
+            queryset = queryset.filter(
+                Q(patient__user__username__icontains=search_value)
+                | Q(patient__user__first_name__icontains=search_value)
+                | Q(patient__user__last_name__icontains=search_value)
+            )
 
     status_value = params.get("status")
     if status_value:
@@ -137,6 +156,7 @@ def _staff_appointment_filter_counts(queryset):
         "all": queryset.count(),
         "pending": queryset.filter(status=AppointmentStatus.PENDING).count(),
         "confirmed": queryset.filter(status=AppointmentStatus.CONFIRMED).count(),
+        "checked_in": queryset.filter(status=AppointmentStatus.CHECKED_IN).count(),
         "declined": queryset.filter(status=AppointmentStatus.DECLINED).count(),
         "no_show": queryset.filter(status=AppointmentStatus.NO_SHOW).count(),
     }
@@ -147,6 +167,8 @@ def _apply_staff_appointment_tab(queryset, tab):
         return queryset.filter(status=AppointmentStatus.PENDING)
     if tab == "confirmed":
         return queryset.filter(status=AppointmentStatus.CONFIRMED)
+    if tab == "checked_in":
+        return queryset.filter(status=AppointmentStatus.CHECKED_IN)
     if tab == "declined":
         return queryset.filter(status=AppointmentStatus.DECLINED)
     if tab == "no_show":
@@ -232,6 +254,7 @@ def _book_or_reschedule_appointment(*, doctor, patient, date, start_time, end_ti
 def _create_reschedule_record(
     *,
     appointment,
+    changed_by,
     old_date,
     old_start_time,
     old_end_time,
@@ -249,6 +272,7 @@ def _create_reschedule_record(
 
     return AppointmentReschedule.objects.create(
         appointment=appointment,
+        changed_by=changed_by,
         old_date=old_date,
         old_start_time=old_start_time,
         old_end_time=old_end_time,
@@ -306,18 +330,34 @@ def _build_doctor_slots_context(request, doctor_id):
     }, None
 
 
-def _save_reschedule_history(*, appointment, old_date, old_start_time, old_end_time, changed_by, reason=""):
-    AppointmentRescheduleHistory.objects.create(
-        appointment=appointment,
-        old_date=old_date,
-        old_start_time=old_start_time,
-        old_end_time=old_end_time,
-        new_date=appointment.date,
-        new_start_time=appointment.start_time,
-        new_end_time=appointment.end_time,
-        changed_by=changed_by,
-        reason=reason,
+def _build_receptionist_reschedule_context(appointment, date_str=None):
+    today = timezone.localdate()
+    tomorrow = today + timedelta(days=1)
+
+    if not date_str:
+        date_str = max(appointment.date, tomorrow).strftime("%Y-%m-%d")
+
+    try:
+        selected_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        return None, "Invalid date format. Use YYYY-MM-DD."
+
+    slots = get_available_slots(
+        appointment.doctor,
+        selected_date,
+        exclude_appointment_id=appointment.id,
     )
+
+    return {
+        "doctor": appointment.doctor,
+        "slots": slots,
+        "selected_date": date_str,
+        "today": today,
+        "tomorrow": tomorrow,
+        "appointment_to_reschedule": appointment,
+        "slot_action_url": reverse("receptionist_reschedule_appointment", args=[appointment.id]),
+    }, None
+
 
 @login_required
 def appointment_list_view(request):
@@ -428,6 +468,7 @@ def reschedule_appointment(request, appointment_id):
         if error_code is None:
             _create_reschedule_record(
                 appointment=appointment,
+                changed_by=request.user,
                 old_date=old_date,
                 old_start_time=old_start_time,
                 old_end_time=old_end_time,
@@ -522,12 +563,46 @@ def appointments_hub(request):
         doctor_profile = get_object_or_404(DoctorProfile, user=request.user)
         queryset = queryset.filter(doctor=doctor_profile)
 
-    appointments = _apply_staff_appointment_tab(queryset, tab).order_by("date", "start_time")
+    try:
+        filtered_queryset = _apply_appointment_filters(queryset, request.GET)
+    except ValidationError:
+        messages.error(request, "Please enter valid appointment filters.")
+        filtered_queryset = queryset
+
+    appointments = _apply_staff_appointment_tab(filtered_queryset, tab).order_by("date", "start_time")
+
+    tab_querystrings = {}
+    for tab_name in ["pending", "confirmed", "declined", "no_show", "all"]:
+        query_params = request.GET.copy()
+        query_params["tab"] = tab_name
+        tab_querystrings[tab_name] = query_params.urlencode()
+
+    doctor_options = DoctorProfile.objects.select_related("user").order_by(
+        "user__first_name",
+        "user__last_name",
+        "user__username",
+    )
+    patient_options = PatientProfile.objects.select_related("user").order_by(
+        "user__first_name",
+        "user__last_name",
+        "user__username",
+    )
 
     return render(request, "appointments/manage_appointments.html", {
         "appointments": appointments,
         "tab": tab,
-        "counts": _staff_appointment_filter_counts(queryset),
+        "counts": _staff_appointment_filter_counts(filtered_queryset),
+        "filters": {
+            "search": request.GET.get("search", ""),
+            "doctor_id": request.GET.get("doctor_id", ""),
+            "patient_id": request.GET.get("patient_id", ""),
+            "start_date": request.GET.get("start_date", ""),
+            "end_date": request.GET.get("end_date", ""),
+        },
+        "doctor_options": doctor_options,
+        "patient_options": patient_options,
+        "tab_querystrings": tab_querystrings,
+        "clear_filters_url": f"{reverse('appointments_hub')}?tab={tab}",
     })
 
 
@@ -1039,34 +1114,22 @@ def receptionist_reschedule_appointment(request, appointment_id):
         messages.error(request, "This appointment cannot be rescheduled.")
         return redirect("receptionist_dashboard")
 
-    selected_date = request.GET.get("date")
-
-    if selected_date:
-        try:
-            selected_date_obj = datetime.strptime(selected_date, "%Y-%m-%d").date()
-        except ValueError:
-            messages.error(request, "Invalid date format.")
-            return redirect("receptionist_reschedule_appointment", appointment_id=appointment.id)
-    else:
-        selected_date_obj = timezone.localdate() + timedelta(days=1)
-        selected_date = selected_date_obj.strftime("%Y-%m-%d")
-
-    slots = get_available_slots(
-        appointment.doctor,
-        selected_date_obj,
-        exclude_appointment_id=appointment.id
-    )
-
     if request.method == "POST":
         date = request.POST.get("date")
         start_time = _parse_time_value(request.POST.get("start_time"))
         end_time = _parse_time_value(request.POST.get("end_time"))
+        if start_time is None or end_time is None:
+            start_time, end_time = _parse_slot_value(request.POST.get("slot"))
+        reason = (request.POST.get("reason") or "").strip()
 
         if not date or not start_time or not end_time:
             messages.error(request, "Please choose a valid slot.")
             return redirect("receptionist_reschedule_appointment", appointment_id=appointment.id)
 
         parsed_date = datetime.strptime(date, "%Y-%m-%d").date()
+        old_date = appointment.date
+        old_start_time = appointment.start_time
+        old_end_time = appointment.end_time
 
         _, error_code = _book_or_reschedule_appointment(
             doctor=appointment.doctor,
@@ -1076,6 +1139,19 @@ def receptionist_reschedule_appointment(request, appointment_id):
             end_time=end_time,
             existing_appointment=appointment,
         )
+
+        if error_code is None:
+            _create_reschedule_record(
+                appointment=appointment,
+                changed_by=request.user,
+                old_date=old_date,
+                old_start_time=old_start_time,
+                old_end_time=old_end_time,
+                new_date=parsed_date,
+                new_start_time=start_time,
+                new_end_time=end_time,
+                reason=reason,
+            )
 
         if error_code == "future_only":
             messages.error(request, "Appointment must be rescheduled to a future date.")
@@ -1092,8 +1168,12 @@ def receptionist_reschedule_appointment(request, appointment_id):
         messages.success(request, "Appointment rescheduled successfully.")
         return redirect("receptionist_dashboard")
 
-    return render(request, "appointments/receptionist_reschedule.html", {
-        "appointment": appointment,
-        "selected_date": selected_date,
-        "slots": slots,
-    })
+    context, error_message = _build_receptionist_reschedule_context(
+        appointment,
+        request.GET.get("date"),
+    )
+    if context is None:
+        messages.error(request, error_message)
+        return redirect("receptionist_dashboard")
+
+    return render(request, "appointments/doctor_slots.html", context)

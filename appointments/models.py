@@ -43,6 +43,12 @@ class Appointment(models.Model):
 
 class AppointmentReschedule(models.Model):
     appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, related_name="reschedules")
+    changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
 
     old_date = models.DateField()
     old_start_time = models.TimeField()
@@ -60,36 +66,3 @@ class AppointmentReschedule(models.Model):
 
     def __str__(self):
         return f"Reschedule for appointment #{self.appointment_id} at {self.changed_at}"
-
-class AppointmentRescheduleHistory(models.Model):
-    appointment = models.ForeignKey(
-        Appointment,
-        on_delete=models.CASCADE,
-        related_name="reschedule_history"
-    )
-
-    old_date = models.DateField()
-    old_start_time = models.TimeField()
-    old_end_time = models.TimeField()
-
-    new_date = models.DateField()
-    new_start_time = models.TimeField()
-    new_end_time = models.TimeField()
-
-    changed_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True
-    )
-
-    reason = models.TextField(blank=True)
-
-    changed_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["-changed_at"]
-
-    def __str__(self):
-        
-        return f"Reschedule history for appointment #{self.appointment.id}"

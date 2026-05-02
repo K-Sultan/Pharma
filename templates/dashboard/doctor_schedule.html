@@ -4,8 +4,14 @@
 
 {% block content %}
 <section class="panel-card">
-    <h2>My Schedule</h2>
-    <p class="muted">Select a day from the weekly table to control that day schedule.</p>
+    <h2>{% if request.user.role == 'doctor' %}My Schedule{% else %}Doctor Schedule{% endif %}</h2>
+    <p class="muted">
+        {% if request.user.role == 'doctor' %}
+            Select a day from the weekly table to control that day schedule.
+        {% else %}
+            Managing schedule for Dr. {{ doctor_profile.user.get_full_name|default:doctor_profile.user.username }}.
+        {% endif %}
+    </p>
 
     <h3>Weekly Schedule</h3>
     <table class="schedule-table">
@@ -20,7 +26,7 @@
             {% for row in weekly_rows %}
             <tr class="{% if row.is_selected %}is-selected{% endif %}">
                 <td>
-                    <a class="day-link" href="{% url 'doctor_schedule' %}?day={{ row.day_value }}">{{ row.day_label }}</a>
+                    <a class="day-link" href="{{ schedule_url }}?day={{ row.day_value }}">{{ row.day_label }}</a>
                 </td>
                 {% if row.entry %}
                     <td><span class="badge badge-working">Working</span></td>
@@ -143,7 +149,7 @@
     </div>
 
     <div class="action-row" style="margin-top: 1rem;">
-        <a class="btn" href="{% url 'doctor_dashboard' %}">Back to Doctor Dashboard</a>
+        <a class="btn" href="{% url back_url %}">Back</a>
     </div>
 </section>
 

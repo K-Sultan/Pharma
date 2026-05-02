@@ -68,6 +68,7 @@ class AppointmentRescheduleTests(TestCase):
 		self.assertEqual(reschedule.appointment, self.appointment)
 		self.assertEqual(reschedule.reason, "")
 		self.assertEqual(reschedule.old_date, timezone.localdate() + timedelta(days=2))
+		self.assertEqual(reschedule.changed_by, self.patient_user)
 
 	def test_doctor_slots_preserves_reschedule_context_and_single_reason_field(self):
 		DoctorWeeklySchedule.objects.create(
@@ -147,6 +148,14 @@ class StaffAppointmentManagementTests(TestCase):
 			end_time=datetime.strptime("12:30", "%H:%M").time(),
 			status=AppointmentStatus.CONFIRMED,
 		)
+		self.checked_in_appointment = Appointment.objects.create(
+			doctor=self.doctor,
+			patient=self.patient,
+			date=timezone.localdate(),
+			start_time=datetime.strptime("12:45", "%H:%M").time(),
+			end_time=datetime.strptime("13:00", "%H:%M").time(),
+			status=AppointmentStatus.CHECKED_IN,
+		)
 		self.declined_appointment = Appointment.objects.create(
 			doctor=self.doctor,
 			patient=self.patient,
@@ -183,11 +192,11 @@ class StaffAppointmentManagementTests(TestCase):
 		self.assertEqual(response.status_code, 200)
 		self.overdue_pending_appointment.refresh_from_db()
 		self.assertEqual(self.overdue_pending_appointment.status, AppointmentStatus.NO_SHOW)
-		self.assertNotContains(response, self.overdue_pending_appointment.patient.user.username, html=False)
+		self.assertNotContains(response, f"Appointment #{self.overdue_pending_appointment.id}")
 
 		no_show_response = self.client.get(reverse("appointments_hub"), {"tab": "no_show"})
 		self.assertContains(no_show_response, "No Show")
-		self.assertContains(no_show_response, self.overdue_pending_appointment.patient.user.username)
+		self.assertContains(no_show_response, f"Appointment #{self.overdue_pending_appointment.id}")
 
 	def test_staff_can_confirm_and_decline_pending_appointments(self):
 		self.client.force_login(self.admin_user)
@@ -207,6 +216,107 @@ class StaffAppointmentManagementTests(TestCase):
 		self.assertEqual(decline_response.status_code, 302)
 		self.confirmed_appointment.refresh_from_db()
 		self.assertEqual(self.confirmed_appointment.status, AppointmentStatus.DECLINED)
+
+	def test_staff_hub_searches_by_appointment_id(self):
+		self.client.force_login(self.receptionist_user)
+
+		response = self.client.get(
+			reverse("appointments_hub"),
+			{"tab": "all", "search": str(self.pending_appointment.id)},
+		)
+
+		self.assertContains(response, f"Appointment #{self.pending_appointment.id}")
+		self.assertNotContains(response, f"Appointment #{self.confirmed_appointment.id}")
+
+	def test_staff_hub_shows_checked_in_tab(self):
+		self.client.force_login(self.receptionist_user)
+
+		response = self.client.get(reverse("appointments_hub"), {"tab": "checked_in"})
+
+		self.assertContains(response, "Check-In")
+		self.assertContains(response, f"Appointment #{self.checked_in_appointment.id}")
+		self.assertContains(response, "Checked In")
+
+	def test_staff_hub_filters_by_date_doctor_and_patient(self):
+		other_doctor_user = User.objects.create_user(
+			username="doctor3",
+			email="doctor3@example.com",
+			password="pass12345",
+			role=UserRole.DOCTOR,
+		)
+		other_patient_user = User.objects.create_user(
+			username="patient4",
+			email="patient4@example.com",
+			password="pass12345",
+			role=UserRole.PATIENT,
+		)
+		other_doctor = DoctorProfile.objects.create(
+			user=other_doctor_user,
+			license_number="LIC-003",
+			specialization="Pediatrics",
+		)
+		other_patient = PatientProfile.objects.create(user=other_patient_user)
+		filtered_date = timezone.localdate() + timedelta(days=4)
+		matching_appointment = Appointment.objects.create(
+			doctor=other_doctor,
+			patient=other_patient,
+			date=filtered_date,
+			start_time=datetime.strptime("15:00", "%H:%M").time(),
+			end_time=datetime.strptime("15:30", "%H:%M").time(),
+			status=AppointmentStatus.CONFIRMED,
+		)
+
+		self.client.force_login(self.receptionist_user)
+
+		response = self.client.get(
+			reverse("appointments_hub"),
+			{
+				"tab": "all",
+				"start_date": filtered_date.isoformat(),
+				"end_date": filtered_date.isoformat(),
+				"doctor_id": other_doctor.id,
+				"patient_id": other_patient.id,
+			},
+		)
+
+		self.assertContains(response, f"Appointment #{matching_appointment.id}")
+		self.assertContains(response, other_patient.user.username)
+		self.assertContains(response, other_doctor.user.username)
+		self.assertNotContains(response, f"Appointment #{self.pending_appointment.id}")
+		self.assertNotContains(response, f"Appointment #{self.confirmed_appointment.id}")
+
+	def test_receptionist_reschedule_uses_shared_page_and_creates_history(self):
+		DoctorWeeklySchedule.objects.create(
+			doctor=self.doctor,
+			day=self.pending_appointment.date.weekday(),
+			start_time=datetime.strptime("11:00", "%H:%M").time(),
+			end_time=datetime.strptime("12:00", "%H:%M").time(),
+		)
+		self.client.force_login(self.receptionist_user)
+
+		response = self.client.get(
+			reverse("receptionist_reschedule_appointment", args=[self.pending_appointment.id]),
+			{"date": self.pending_appointment.date.isoformat()},
+		)
+
+		self.assertTemplateUsed(response, "appointments/doctor_slots.html")
+		self.assertContains(response, f'name="appointment" value="{self.pending_appointment.id}"', html=False)
+		self.assertEqual(response.content.decode().count('name="reason"'), 1)
+
+		post_response = self.client.post(
+			reverse("receptionist_reschedule_appointment", args=[self.pending_appointment.id]),
+			{
+				"date": self.pending_appointment.date.isoformat(),
+				"slot": "11:30:00|12:00:00",
+				"reason": "Coverage change",
+			},
+		)
+
+		self.assertEqual(post_response.status_code, 302)
+		self.pending_appointment.refresh_from_db()
+		reschedule = AppointmentReschedule.objects.get(appointment=self.pending_appointment)
+		self.assertEqual(reschedule.changed_by, self.receptionist_user)
+		self.assertEqual(reschedule.reason, "Coverage change")
 
 	def test_doctor_queue_lists_confirmed_appointments(self):
 		self.client.force_login(self.doctor_user)

@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}Doctor Schedules{% endblock %}
+
+{% block content %}
+<section class="panel-card">
+    <p class="kicker">Receptionist</p>
+    <h1>Choose a doctor</h1>
+    <p class="muted">Select a doctor to open the same schedule editor used by doctors.</p>
+
+    <div class="card-list">
+        {% for doctor in doctors %}
+            <article class="item-card doctor-card">
+                <div>
+                    <h3>Dr. {{ doctor.user.get_full_name|default:doctor.user.username }}</h3>
+                    <p class="muted">{{ doctor.specialization|default:'Doctor' }}</p>
+                </div>
+                <div class="action-row">
+                    <a class="btn btn-primary" href="{% url 'receptionist_doctor_schedule' doctor.id %}">Manage Schedule</a>
+                </div>
+            </article>
+        {% empty %}
+            <p class="empty-state">No doctors are available right now.</p>
+        {% endfor %}
+    </div>
+
+    <div class="action-row" style="margin-top: 1rem;">
+        <a class="btn" href="{% url 'receptionist_dashboard' %}">Back to Receptionist Dashboard</a>
+    </div>
+</section>
+{% endblock %}

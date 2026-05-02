@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import login_required
+from django.urls import reverse
 
 from django.utils import timezone
 from appointments.models import Appointment, AppointmentStatus
@@ -13,6 +14,39 @@ from accounts.forms import (
     DoctorDayScheduleForm,
 )
 from accounts.models import DoctorProfile, DoctorWeeklySchedule, UserRole, Weekday
+
+
+def _format_waiting_time(check_in_time):
+    if not check_in_time:
+        return None
+
+    elapsed = max(int((timezone.now() - check_in_time).total_seconds()), 0)
+    hours, remainder = divmod(elapsed, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+
+def _get_schedule_target(request, doctor_id=None):
+    user = request.user
+
+    if user.role == UserRole.DOCTOR:
+        doctor_profile = get_object_or_404(DoctorProfile, user=user)
+        if doctor_id is not None and doctor_profile.id != doctor_id:
+            messages.error(request, 'You can only manage your own schedule.')
+            return None, None
+
+        return doctor_profile, reverse('doctor_schedule')
+
+    if user.role in {UserRole.RECEPTIONIST, UserRole.ADMIN} or user.is_superuser:
+        if doctor_id is None:
+            messages.error(request, 'Choose a doctor to manage their schedule.')
+            return None, None
+
+        doctor_profile = get_object_or_404(DoctorProfile, id=doctor_id)
+        return doctor_profile, reverse('receptionist_doctor_schedule', args=[doctor_profile.id])
+
+    messages.error(request, 'You do not have permission to access this page.')
+    return None, None
 
 @login_required
 def dashboard_redirect(request):
@@ -43,9 +77,12 @@ def doctor_dashboard(request):
 
 
 @login_required
-@role_required(UserRole.DOCTOR)
-def doctor_schedule_view(request):
-    doctor_profile = get_object_or_404(DoctorProfile, user=request.user)
+def doctor_schedule_view(request, doctor_id=None):
+    doctor_profile, schedule_url = _get_schedule_target(request, doctor_id=doctor_id)
+    if doctor_profile is None:
+        if request.user.role == UserRole.DOCTOR:
+            return redirect('doctor_dashboard')
+        return redirect('receptionist_doctor_schedule_list')
 
     selected_day_raw = request.GET.get('day')
     if selected_day_raw is None:
@@ -99,7 +136,7 @@ def doctor_schedule_view(request):
                     },
                 )
                 messages.success(request, 'Weekly schedule updated.')
-                return redirect(f"{redirect('doctor_schedule').url}?day={selected_day}")
+                return redirect(f"{schedule_url}?day={selected_day}")
 
         elif action == 'clear_weekly':
             selected_day_raw = request.POST.get('selected_day')
@@ -112,7 +149,7 @@ def doctor_schedule_view(request):
 
             DoctorWeeklySchedule.objects.filter(doctor=doctor_profile, day=selected_day).delete()
             messages.success(request, 'Day marked as off in weekly schedule.')
-            return redirect(f"{redirect('doctor_schedule').url}?day={selected_day}")
+            return redirect(f"{schedule_url}?day={selected_day}")
 
         elif action == 'add_day_off':
             day_off_form = DoctorDayOffExceptionForm(request.POST, doctor=doctor_profile)
@@ -121,7 +158,7 @@ def doctor_schedule_view(request):
                 schedule_exception.doctor = doctor_profile
                 schedule_exception.save()
                 messages.success(request, 'Day off added.')
-                return redirect('doctor_schedule')
+                return redirect(schedule_url)
 
         elif action == 'add_custom_work_day':
             custom_work_day_form = DoctorCustomWorkDayExceptionForm(request.POST, doctor=doctor_profile)
@@ -130,13 +167,13 @@ def doctor_schedule_view(request):
                 schedule_exception.doctor = doctor_profile
                 schedule_exception.save()
                 messages.success(request, 'Custom work day added.')
-                return redirect('doctor_schedule')
+                return redirect(schedule_url)
 
         elif action == 'delete_exception':
             exception_id = request.POST.get('exception_id')
             doctor_profile.schedule_exceptions.filter(id=exception_id).delete()
             messages.success(request, 'Schedule exception removed.')
-            return redirect('doctor_schedule')
+            return redirect(schedule_url)
 
     weekly_rows = [
         {
@@ -150,6 +187,9 @@ def doctor_schedule_view(request):
     exception_entries = doctor_profile.schedule_exceptions.all()
 
     context = {
+        'doctor_profile': doctor_profile,
+        'schedule_url': schedule_url,
+        'back_url': 'doctor_dashboard' if request.user.role == UserRole.DOCTOR else 'receptionist_doctor_schedule_list',
         'weekly_rows': weekly_rows,
         'exception_entries': exception_entries,
         'selected_day': selected_day,
@@ -164,15 +204,30 @@ def doctor_schedule_view(request):
 
 @login_required
 @role_required(UserRole.RECEPTIONIST)
+def receptionist_doctor_schedule_list(request):
+    doctors = DoctorProfile.objects.select_related('user').order_by('user__first_name', 'user__last_name', 'user__username')
+    return render(request, 'dashboard/receptionist_doctor_schedule_list.html', {
+        'doctors': doctors,
+    })
+
+
+@login_required
+@role_required(UserRole.RECEPTIONIST)
 def receptionist_dashboard(request):
     today = timezone.localdate()
 
     appointments = (
         Appointment.objects
         .filter(date=today)
-        .select_related('patient__user', 'doctor__user')
+        .select_related('patient__user', 'doctor__user', 'consultation_record')
         .order_by('start_time')
     )
+
+    for appointment in appointments:
+        consultation_record = getattr(appointment, 'consultation_record', None)
+        appointment.waiting_time = _format_waiting_time(
+            consultation_record.check_in_time if consultation_record else None
+        )
 
     return render(request, 'dashboard/receptionist_dashboard.html', {
         'appointments': appointments,
@@ -200,9 +255,15 @@ def doctor_queue_view(request):
             date=today,
             status=AppointmentStatus.CHECKED_IN
         )
-        .select_related('patient__user')
+        .select_related('patient__user', 'consultation_record')
         .order_by('start_time')
     )
+
+    for appointment in queue:
+        consultation_record = getattr(appointment, 'consultation_record', None)
+        appointment.waiting_time = _format_waiting_time(
+            consultation_record.check_in_time if consultation_record else None
+        )
 
     return render(request, 'dashboard/doctor_queue.html', {
         'queue': queue

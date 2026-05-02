@@ -7,6 +7,12 @@
 
     <p><strong>Date:</strong> {{ today }}</p>
 
+    <div class="action-row" style="margin-bottom: 1rem;">
+        <a class="btn btn-primary" href="{% url 'receptionist_doctor_schedule_list' %}">
+            Manage Doctor Schedules
+        </a>
+    </div>
+
     {% if appointments %}
         {% for appointment in appointments %}
             <div class="card" style="margin-top: 16px;">
@@ -30,6 +36,13 @@
                     <strong>Status:</strong>
                     {{ appointment.get_status_display }}
                 </p>
+
+                {% if appointment.waiting_time %}
+                    <p>
+                        <strong>Waiting Time:</strong>
+                        {{ appointment.waiting_time }}
+                    </p>
+                {% endif %}
 
                 <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px;">
                     {% if appointment.status != "checked_in" and appointment.status != "cancelled" and appointment.status != "completed" and appointment.status != "no_show" and appointment.status != "declined" %}

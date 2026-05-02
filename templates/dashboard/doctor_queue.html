@@ -17,6 +17,10 @@
                     {{ appointment.start_time }} - {{ appointment.end_time }}
                 </p>
 
+                {% if appointment.waiting_time %}
+                    <p>Waiting Time: {{ appointment.waiting_time }}</p>
+                {% endif %}
+
                 <p>Status: {{ appointment.get_status_display }}</p>
 
                 <a class="btn btn-primary"

@@ -8,19 +8,72 @@
     <h1>Manage Appointments</h1>
     <p class="muted">Review pending requests, confirm or decline them, and switch between appointment states from one place.</p>
 
+    <form method="get" class="stack-form" style="margin-bottom: 1.25rem;">
+        <input type="hidden" name="tab" value="{{ tab }}">
+
+        <div class="card-list">
+            <div>
+                <label for="id_search">Search appointment ID or patient name</label>
+                <input id="id_search" type="search" name="search" value="{{ filters.search }}" placeholder="Appointment ID or patient name">
+            </div>
+
+            <div class="action-row" style="gap: 16px; align-items: end; flex-wrap: wrap;">
+                <div>
+                    <label for="id_start_date">Start date</label>
+                    <input id="id_start_date" type="date" name="start_date" value="{{ filters.start_date }}">
+                </div>
+
+                <div>
+                    <label for="id_end_date">End date</label>
+                    <input id="id_end_date" type="date" name="end_date" value="{{ filters.end_date }}">
+                </div>
+
+                <div>
+                    <label for="id_doctor">Doctor</label>
+                    <select id="id_doctor" name="doctor_id">
+                        <option value="">All doctors</option>
+                        {% for doctor in doctor_options %}
+                            <option value="{{ doctor.id }}" {% if filters.doctor_id|stringformat:'s' == doctor.id|stringformat:'s' %}selected{% endif %}>
+                                Dr. {{ doctor.user.get_full_name|default:doctor.user.username }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label for="id_patient">Patient</label>
+                    <select id="id_patient" name="patient_id">
+                        <option value="">All patients</option>
+                        {% for patient in patient_options %}
+                            <option value="{{ patient.id }}" {% if filters.patient_id|stringformat:'s' == patient.id|stringformat:'s' %}selected{% endif %}>
+                                {{ patient.user.get_full_name|default:patient.user.username }} ({{ patient.user.username }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="action-row">
+                <button class="btn btn-primary" type="submit">Apply Filters</button>
+                <a class="btn btn-soft" href="{{ clear_filters_url }}">Clear Filters</a>
+            </div>
+        </div>
+    </form>
+
     <div class="action-row">
-        <a class="btn {% if tab == 'pending' %}btn-primary{% else %}btn-soft{% endif %}" href="{% url 'appointments_hub' %}?tab=pending">Pending ({{ counts.pending }})</a>
-        <a class="btn {% if tab == 'confirmed' %}btn-primary{% else %}btn-soft{% endif %}" href="{% url 'appointments_hub' %}?tab=confirmed">Confirmed ({{ counts.confirmed }})</a>
-        <a class="btn {% if tab == 'declined' %}btn-primary{% else %}btn-soft{% endif %}" href="{% url 'appointments_hub' %}?tab=declined">Declined ({{ counts.declined }})</a>
-        <a class="btn {% if tab == 'no_show' %}btn-primary{% else %}btn-soft{% endif %}" href="{% url 'appointments_hub' %}?tab=no_show">No Show ({{ counts.no_show }})</a>
-        <a class="btn {% if tab == 'all' %}btn-primary{% else %}btn-soft{% endif %}" href="{% url 'appointments_hub' %}?tab=all">All ({{ counts.all }})</a>
+        <a class="btn {% if tab == 'pending' %}btn-primary{% else %}btn-soft{% endif %}" href="{% url 'appointments_hub' %}?{{ tab_querystrings.pending }}">Pending ({{ counts.pending }})</a>
+        <a class="btn {% if tab == 'confirmed' %}btn-primary{% else %}btn-soft{% endif %}" href="{% url 'appointments_hub' %}?{{ tab_querystrings.confirmed }}">Confirmed ({{ counts.confirmed }})</a>
+        <a class="btn {% if tab == 'checked_in' %}btn-primary{% else %}btn-soft{% endif %}" href="{% url 'appointments_hub' %}?{{ tab_querystrings.checked_in }}">Checked In ({{ counts.checked_in }})</a>
+        <a class="btn {% if tab == 'declined' %}btn-primary{% else %}btn-soft{% endif %}" href="{% url 'appointments_hub' %}?{{ tab_querystrings.declined }}">Declined ({{ counts.declined }})</a>
+        <a class="btn {% if tab == 'no_show' %}btn-primary{% else %}btn-soft{% endif %}" href="{% url 'appointments_hub' %}?{{ tab_querystrings.no_show }}">No Show ({{ counts.no_show }})</a>
+        <a class="btn {% if tab == 'all' %}btn-primary{% else %}btn-soft{% endif %}" href="{% url 'appointments_hub' %}?{{ tab_querystrings.all }}">All ({{ counts.all }})</a>
     </div>
 
     {% if appointments %}
         <div class="card-list">
             {% for appointment in appointments %}
                 <article class="item-card">
-                    <h3>{{ appointment.patient.user.get_full_name|default:appointment.patient.user.username }} with Dr. {{ appointment.doctor.user.username }}</h3>
+                    <h3>Appointment #{{ appointment.id }} - {{ appointment.patient.user.get_full_name|default:appointment.patient.user.username }} with Dr. {{ appointment.doctor.user.username }}</h3>
                     <p class="muted">Date: {{ appointment.date }} | Time: {{ appointment.start_time|time:'H:i' }} - {{ appointment.end_time|time:'H:i' }}</p>
                     <p class="muted">Status: {{ appointment.get_status_display }}</p>
                     <p class="muted">Patient username: {{ appointment.patient.user.username }}</p>
