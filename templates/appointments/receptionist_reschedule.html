@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+    <p class="eyebrow">Receptionist</p>
+    <h1>Reschedule Appointment</h1>
+
+    <p>
+        <strong>Patient:</strong>
+        {{ appointment.patient.user.first_name }}
+        {{ appointment.patient.user.last_name }}
+    </p>
+
+    <p>
+        <strong>Doctor:</strong>
+        Dr. {{ appointment.doctor.user.first_name }}
+        {{ appointment.doctor.user.last_name }}
+    </p>
+
+    <p>
+        <strong>Current Appointment:</strong>
+        {{ appointment.date }} |
+        {{ appointment.start_time }} - {{ appointment.end_time }}
+    </p>
+
+    <hr>
+
+    <form method="GET">
+        <label>Choose new date</label>
+        <input type="date" name="date" value="{{ selected_date }}">
+        <button class="btn btn-primary" type="submit">
+            Show Available Slots
+        </button>
+    </form>
+
+    <hr>
+
+    <h3>Available Slots</h3>
+
+    {% if slots %}
+        {% for start_time, end_time in slots %}
+            <form method="POST" style="margin-top: 12px;">
+                {% csrf_token %}
+                <input type="hidden" name="date" value="{{ selected_date }}">
+                <input type="hidden" name="start_time" value="{{ start_time }}">
+                <input type="hidden" name="end_time" value="{{ end_time }}">
+                <input type="text" name="reason" placeholder="Reason for reschedule">
+                
+                <button class="btn btn-soft" type="submit">
+                    {{ start_time }} - {{ end_time }}
+                </button>
+            </form>
+        {% endfor %}
+    {% else %}
+        <p>No available slots for this date.</p>
+    {% endif %}
+
+    <br>
+
+    <a class="btn btn-soft" href="{% url 'receptionist_dashboard' %}">
+        Back to Receptionist Dashboard
+    </a>
+</div>
+{% endblock %}

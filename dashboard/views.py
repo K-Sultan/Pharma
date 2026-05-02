@@ -165,7 +165,19 @@ def doctor_schedule_view(request):
 @login_required
 @role_required(UserRole.RECEPTIONIST)
 def receptionist_dashboard(request):
-    return render(request, 'dashboard/receptionist_dashboard.html')
+    today = timezone.localdate()
+
+    appointments = (
+        Appointment.objects
+        .filter(date=today)
+        .select_related('patient__user', 'doctor__user')
+        .order_by('start_time')
+    )
+
+    return render(request, 'dashboard/receptionist_dashboard.html', {
+        'appointments': appointments,
+        'today': today
+    })
 
 
 @login_required

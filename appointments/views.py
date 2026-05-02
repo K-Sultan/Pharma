@@ -21,7 +21,7 @@ from appointments.utils import get_available_slots
 from consultations.models import ConsultationRecord
 from consultations.serializers import ConsultationRecordSerializer
 
-from .models import Appointment, AppointmentReschedule, AppointmentStatus
+from .models import Appointment, AppointmentReschedule, AppointmentStatus,AppointmentRescheduleHistory
 from .serializers import (
     AppointmentQueueSerializer,
     AppointmentSerializer,
@@ -30,7 +30,8 @@ from .serializers import (
     DoctorProfileSerializer,
 )
 from accounts.permissions import IsDoctor, IsPatient, IsReceptionist, IsAdmin
-
+from accounts.decorators import role_required
+from accounts.models import UserRole
 
 def _get_patient_profile_or_none(user):
     return getattr(user, "patient_profile", None)
@@ -304,6 +305,19 @@ def _build_doctor_slots_context(request, doctor_id):
         "slot_action_url": reverse("reschedule_appointment", args=[appointment_to_reschedule.id]) if appointment_to_reschedule else reverse("book_appointment", args=[doctor.id]),
     }, None
 
+
+def _save_reschedule_history(*, appointment, old_date, old_start_time, old_end_time, changed_by, reason=""):
+    AppointmentRescheduleHistory.objects.create(
+        appointment=appointment,
+        old_date=old_date,
+        old_start_time=old_start_time,
+        old_end_time=old_end_time,
+        new_date=appointment.date,
+        new_start_time=appointment.start_time,
+        new_end_time=appointment.end_time,
+        changed_by=changed_by,
+        reason=reason,
+    )
 
 @login_required
 def appointment_list_view(request):
@@ -647,7 +661,7 @@ class AppointmentCheckInAPIView(APIView):
 
 
 class DoctorDailyQueueAPIView(APIView):
-    permission_classes = [IsReceptionist | IsAdmin]
+    permission_classes = [IsReceptionist | IsAdmin | IsDoctor]
 
     def get(self, request, doctor_id):
         queryset = (
@@ -705,7 +719,7 @@ class BookAppointmentAPIView(APIView):
 
 
 class RescheduleAppointmentAPIView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsPatient | IsReceptionist]
 
     def post(self, request, appointment_id):
         patient = _get_patient_profile_or_none(request.user)
@@ -767,7 +781,7 @@ class RescheduleAppointmentAPIView(APIView):
 
 
 class CancelAppointmentAPIView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsPatient]
 
     def post(self, request, appointment_id):
         patient = _get_patient_profile_or_none(request.user)
@@ -853,7 +867,7 @@ class AppointmentStatusUpdateAPIView(APIView):
 
 
 class AppointmentSearchAPIView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsReceptionist | IsAdmin]
 
     def get(self, request):
         queryset = _apply_appointment_filters(_get_appointment_queryset(), request.query_params).order_by(
@@ -893,7 +907,7 @@ class AdminAnalyticsView(APIView):
 
 
 class AppointmentCSVExportView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAdmin]
 
     def get(self, request):
         queryset = _apply_appointment_filters(_get_appointment_queryset(), request.query_params).order_by(
@@ -941,7 +955,7 @@ class AppointmentCSVExportView(APIView):
 
 
 class PatientAppointmentsAPIView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsPatient]
 
     def get(self, request):
         patient = _get_patient_profile_or_none(request.user)
@@ -974,3 +988,112 @@ class PatientAppointmentsAPIView(APIView):
                 "cancelled": AppointmentSerializer(cancelled, many=True).data,
             }
         )
+
+@login_required
+@role_required(UserRole.RECEPTIONIST)
+def check_in_local(request, appointment_id):
+    appointment = get_object_or_404(Appointment, id=appointment_id)
+
+    if appointment.date != timezone.localdate():
+        messages.error(request, "Only today's appointments can be checked in.")
+        return redirect('receptionist_dashboard')
+
+    if appointment.status in [
+        AppointmentStatus.CANCELLED,
+        AppointmentStatus.DECLINED,
+        AppointmentStatus.COMPLETED,
+        AppointmentStatus.NO_SHOW
+    ]:
+        messages.error(request, "This appointment cannot be checked in.")
+        return redirect('receptionist_dashboard')
+
+    appointment.status = AppointmentStatus.CHECKED_IN
+    appointment.save(update_fields=['status'])
+
+    # create consultation record
+    ConsultationRecord.objects.update_or_create(
+        appointment=appointment,
+        defaults={"check_in_time": timezone.now()}
+    )
+
+    messages.success(request, "Patient checked in successfully.")
+    return redirect('receptionist_dashboard')
+
+@login_required
+@role_required(UserRole.RECEPTIONIST)
+def receptionist_reschedule_appointment(request, appointment_id):
+    appointment = get_object_or_404(
+        Appointment.objects.select_related(
+            "doctor__user",
+            "patient__user"
+        ),
+        id=appointment_id
+    )
+
+    if appointment.status in [
+        AppointmentStatus.CANCELLED,
+        AppointmentStatus.COMPLETED,
+        AppointmentStatus.NO_SHOW,
+        AppointmentStatus.DECLINED,
+    ]:
+        messages.error(request, "This appointment cannot be rescheduled.")
+        return redirect("receptionist_dashboard")
+
+    selected_date = request.GET.get("date")
+
+    if selected_date:
+        try:
+            selected_date_obj = datetime.strptime(selected_date, "%Y-%m-%d").date()
+        except ValueError:
+            messages.error(request, "Invalid date format.")
+            return redirect("receptionist_reschedule_appointment", appointment_id=appointment.id)
+    else:
+        selected_date_obj = timezone.localdate() + timedelta(days=1)
+        selected_date = selected_date_obj.strftime("%Y-%m-%d")
+
+    slots = get_available_slots(
+        appointment.doctor,
+        selected_date_obj,
+        exclude_appointment_id=appointment.id
+    )
+
+    if request.method == "POST":
+        date = request.POST.get("date")
+        start_time = _parse_time_value(request.POST.get("start_time"))
+        end_time = _parse_time_value(request.POST.get("end_time"))
+
+        if not date or not start_time or not end_time:
+            messages.error(request, "Please choose a valid slot.")
+            return redirect("receptionist_reschedule_appointment", appointment_id=appointment.id)
+
+        parsed_date = datetime.strptime(date, "%Y-%m-%d").date()
+
+        _, error_code = _book_or_reschedule_appointment(
+            doctor=appointment.doctor,
+            patient=appointment.patient,
+            date=parsed_date,
+            start_time=start_time,
+            end_time=end_time,
+            existing_appointment=appointment,
+        )
+
+        if error_code == "future_only":
+            messages.error(request, "Appointment must be rescheduled to a future date.")
+            return redirect(
+                f"{reverse('receptionist_reschedule_appointment', args=[appointment.id])}?date={date}"
+            )
+
+        if error_code == "conflict":
+            messages.error(request, "This slot conflicts with another appointment.")
+            return redirect(
+                f"{reverse('receptionist_reschedule_appointment', args=[appointment.id])}?date={date}"
+            )
+
+        messages.success(request, "Appointment rescheduled successfully.")
+        return redirect("receptionist_dashboard")
+
+    return render(request, "appointments/receptionist_reschedule.html", {
+        "appointment": appointment,
+        "selected_date": selected_date,
+        "slots": slots,
+    })

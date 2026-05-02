@@ -1,15 +1,57 @@
 {% extends 'base.html' %}
 
-{% block title %}Receptionist Dashboard{% endblock %}
-
 {% block content %}
-<section class="panel-card">
-	<h2>Receptionist Dashboard</h2>
-	<p>Welcome, <strong>{{ request.user.username }}</strong>.</p>
-	<p class="muted">Handle patient flow, scheduling, and front-desk tasks smoothly.</p>
-	<div class="action-row">
-		<a class="btn btn-primary" href="{% url 'appointments_hub' %}">Appointments</a>
-		<a class="btn btn-primary" href="/">Back to Home</a>
-	</div>
-</section>
+<div class="card">
+    <p class="eyebrow">Receptionist</p>
+    <h1>Today's Appointments</h1>
+
+    <p><strong>Date:</strong> {{ today }}</p>
+
+    {% if appointments %}
+        {% for appointment in appointments %}
+            <div class="card" style="margin-top: 16px;">
+                <h3>
+                    {{ appointment.patient.user.first_name }}
+                    {{ appointment.patient.user.last_name }}
+                </h3>
+
+                <p>
+                    <strong>Doctor:</strong>
+                    Dr. {{ appointment.doctor.user.first_name }}
+                    {{ appointment.doctor.user.last_name }}
+                </p>
+
+                <p>
+                    <strong>Time:</strong>
+                    {{ appointment.start_time }} - {{ appointment.end_time }}
+                </p>
+
+                <p>
+                    <strong>Status:</strong>
+                    {{ appointment.get_status_display }}
+                </p>
+
+                <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px;">
+                    {% if appointment.status != "checked_in" and appointment.status != "cancelled" and appointment.status != "completed" and appointment.status != "no_show" and appointment.status != "declined" %}
+                        <form method="POST" action="{% url 'check_in_local' appointment.id %}">
+                            {% csrf_token %}
+                            <button class="btn btn-primary" type="submit">
+                                Check In
+                            </button>
+                        </form>
+                    {% endif %}
+
+                    {% if appointment.status != "cancelled" and appointment.status != "completed" and appointment.status != "no_show" and appointment.status != "declined" %}
+                        <a class="btn btn-soft"
+                        href="{% url 'receptionist_reschedule_appointment' appointment.id %}">
+                            Reschedule
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>No appointments today.</p>
+    {% endif %}
+</div>
 {% endblock %}
