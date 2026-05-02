@@ -64,6 +64,20 @@
             <input type="hidden" name="selected_day" value="{{ selected_day }}">
             <button type="submit" class="btn btn-soft">Mark Selected Day Off</button>
         </form>
+
+        <div class="schedule-buffer-block" style="margin-top: 1rem;">
+            <h4>Slot Buffer</h4>
+            <p class="muted">Current buffer: {{ doctor_profile.buffer_minutes }} minutes between slots.</p>
+            <form method="post" class="stack-form django-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save_buffer">
+                <input type="hidden" name="selected_day" value="{{ selected_day }}">
+                {{ buffer_form.as_p }}
+                <div class="action-row">
+                    <button type="submit" class="btn btn-primary">Save Buffer Time</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <h3>Exceptions</h3>

@@ -90,6 +90,26 @@ class AppointmentRescheduleTests(TestCase):
 		self.assertContains(response, f'name="appointment" value="{self.appointment.id}"', html=False)
 		self.assertEqual(response.content.decode().count('name="reason"'), 1)
 
+	def test_doctor_slots_respect_doctor_buffer_between_slots(self):
+		self.doctor.buffer_minutes = 10
+		self.doctor.save(update_fields=['buffer_minutes'])
+		DoctorWeeklySchedule.objects.create(
+			doctor=self.doctor,
+			day=self.appointment.date.weekday(),
+			start_time=datetime.strptime('09:00', '%H:%M').time(),
+			end_time=datetime.strptime('11:00', '%H:%M').time(),
+		)
+		self.client.force_login(self.patient_user)
+
+		response = self.client.get(
+			reverse('doctor_slots', args=[self.doctor.id]),
+			{'date': self.appointment.date.isoformat()},
+		)
+
+		self.assertContains(response, '09:40 - 10:10')
+		self.assertContains(response, '10:20 - 10:50')
+		self.assertNotContains(response, '09:00 - 09:30')
+
 
 class StaffAppointmentManagementTests(TestCase):
 	def setUp(self):
@@ -164,6 +184,22 @@ class StaffAppointmentManagementTests(TestCase):
 			end_time=datetime.strptime("13:30", "%H:%M").time(),
 			status=AppointmentStatus.DECLINED,
 		)
+		self.overdue_confirmed_appointment = Appointment.objects.create(
+			doctor=self.doctor,
+			patient=self.patient,
+			date=timezone.localdate() - timedelta(days=1),
+			start_time=datetime.strptime("08:30", "%H:%M").time(),
+			end_time=datetime.strptime("09:00", "%H:%M").time(),
+			status=AppointmentStatus.CONFIRMED,
+		)
+		self.overdue_declined_appointment = Appointment.objects.create(
+			doctor=self.doctor,
+			patient=self.patient,
+			date=timezone.localdate() - timedelta(days=1),
+			start_time=datetime.strptime("09:30", "%H:%M").time(),
+			end_time=datetime.strptime("10:00", "%H:%M").time(),
+			status=AppointmentStatus.DECLINED,
+		)
 		self.overdue_pending_appointment = Appointment.objects.create(
 			doctor=self.doctor,
 			patient=self.overdue_patient,
@@ -192,11 +228,17 @@ class StaffAppointmentManagementTests(TestCase):
 		self.assertEqual(response.status_code, 200)
 		self.overdue_pending_appointment.refresh_from_db()
 		self.assertEqual(self.overdue_pending_appointment.status, AppointmentStatus.NO_SHOW)
+		self.overdue_confirmed_appointment.refresh_from_db()
+		self.assertEqual(self.overdue_confirmed_appointment.status, AppointmentStatus.NO_SHOW)
+		self.overdue_declined_appointment.refresh_from_db()
+		self.assertEqual(self.overdue_declined_appointment.status, AppointmentStatus.NO_SHOW)
 		self.assertNotContains(response, f"Appointment #{self.overdue_pending_appointment.id}")
 
 		no_show_response = self.client.get(reverse("appointments_hub"), {"tab": "no_show"})
 		self.assertContains(no_show_response, "No Show")
 		self.assertContains(no_show_response, f"Appointment #{self.overdue_pending_appointment.id}")
+		self.assertContains(no_show_response, f"Appointment #{self.overdue_confirmed_appointment.id}")
+		self.assertContains(no_show_response, f"Appointment #{self.overdue_declined_appointment.id}")
 
 	def test_staff_can_confirm_and_decline_pending_appointments(self):
 		self.client.force_login(self.admin_user)
@@ -323,5 +365,17 @@ class StaffAppointmentManagementTests(TestCase):
 
 		response = self.client.get(reverse("doctor_queue"))
 
-		self.assertContains(response, "Today Confirmed Queue")
+		self.assertContains(response, "Today's Appointments")
 		self.assertContains(response, self.confirmed_appointment.patient.user.get_full_name() or self.confirmed_appointment.patient.user.username)
+
+	def test_staff_can_mark_no_show_from_manage_page(self):
+		self.client.force_login(self.admin_user)
+
+		response = self.client.post(
+			reverse("staff_appointment_status_update", args=[self.confirmed_appointment.id]),
+			{"action": "no_show", "tab": "all"},
+		)
+
+		self.assertEqual(response.status_code, 302)
+		self.confirmed_appointment.refresh_from_db()
+		self.assertEqual(self.confirmed_appointment.status, AppointmentStatus.NO_SHOW)

@@ -2,7 +2,7 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from .models import DoctorScheduleException, DoctorScheduleExceptionType, DoctorWeeklySchedule, UserRole
+from .models import DoctorProfile, DoctorScheduleException, DoctorScheduleExceptionType, DoctorWeeklySchedule, UserRole
 from .models import PatientProfile
 
 User = get_user_model()
@@ -85,6 +85,21 @@ class DoctorWeeklyScheduleForm(forms.ModelForm):
         fields = ['day', 'start_time', 'end_time']
 
 
+class DoctorScheduleBufferForm(forms.ModelForm):
+    class Meta:
+        model = DoctorProfile
+        fields = ['buffer_minutes']
+        widgets = {
+            'buffer_minutes': forms.NumberInput(attrs={'min': 5, 'max': 30, 'step': 5}),
+        }
+
+    def clean_buffer_minutes(self):
+        buffer_minutes = self.cleaned_data['buffer_minutes']
+        if buffer_minutes < 5 or buffer_minutes > 30 or buffer_minutes % 5 != 0:
+            raise forms.ValidationError('Buffer time must be a multiple of 5 minutes between 5 and 30.')
+        return buffer_minutes
+
+
 class DoctorScheduleExceptionForm(forms.ModelForm):
     class Meta:
         model = DoctorScheduleException
@@ -106,6 +121,10 @@ class DoctorDayScheduleForm(forms.Form):
         end_time = cleaned_data.get('end_time')
         if start_time and end_time and start_time >= end_time:
             raise forms.ValidationError('Start time must be earlier than end time.')
+        if start_time and (start_time.minute not in {0, 30} or start_time.second or start_time.microsecond):
+            raise forms.ValidationError('Weekly schedule times must be on 30-minute boundaries.')
+        if end_time and (end_time.minute not in {0, 30} or end_time.second or end_time.microsecond):
+            raise forms.ValidationError('Weekly schedule times must be on 30-minute boundaries.')
         return cleaned_data
 
 

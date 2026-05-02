@@ -10,7 +10,7 @@ class DoctorProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DoctorProfile
-        fields = ["id", "username", "specialization", "department", "bio"]
+        fields = ["id", "username", "specialization", "department", "bio", "buffer_minutes"]
 
 
 class AppointmentSerializer(serializers.ModelSerializer):

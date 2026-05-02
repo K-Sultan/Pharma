@@ -1,8 +1,14 @@
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
+
+
+def _validate_buffer_multiple(value):
+	if value % 5 != 0:
+		raise ValidationError('Buffer time must be a multiple of 5 minutes.')
 
 
 class UserRole(models.TextChoices):
@@ -76,6 +82,16 @@ class DoctorProfile(models.Model):
 	specialization = models.CharField(max_length=120)
 	department = models.CharField(max_length=120, blank=True)
 	bio = models.TextField(blank=True)
+	buffer_minutes = models.PositiveSmallIntegerField(
+		default=5,
+		validators=[MinValueValidator(5), MaxValueValidator(30), _validate_buffer_multiple],
+		help_text='Buffer time between slots in minutes.',
+	)
+
+	def clean(self):
+		super().clean()
+		if self.buffer_minutes is not None and self.buffer_minutes % 5 != 0:
+			raise ValidationError({'buffer_minutes': 'Buffer time must be a multiple of 5 minutes.'})
 
 	def clean(self):
 		super().clean()
@@ -110,6 +126,10 @@ class Weekday(models.IntegerChoices):
 	SUNDAY = 6, 'Sunday'
 
 
+def _validate_half_hour_boundary(value):
+	if value.minute not in {0, 30} or value.second or value.microsecond:
+		raise ValidationError('Weekly schedule times must be on 30-minute boundaries.')
+
 class DoctorWeeklySchedule(models.Model):
 	doctor = models.ForeignKey(DoctorProfile, on_delete=models.CASCADE, related_name='weekly_schedule')
 	day = models.IntegerField(choices=Weekday.choices)
@@ -129,6 +149,8 @@ class DoctorWeeklySchedule(models.Model):
 			return
 		if self.start_time >= self.end_time:
 			raise ValidationError('Weekly schedule start time must be earlier than end time.')
+		_validate_half_hour_boundary(self.start_time)
+		_validate_half_hour_boundary(self.end_time)
 
 	def __str__(self):
 		return f'{self.doctor.user.username} - {self.get_day_display()} {self.start_time} to {self.end_time}'

@@ -2,29 +2,29 @@
 
 {% block content %}
 <div class="card">
-    <p class="eyebrow">Receptionist</p>
+    <p class="eyebrow">{% if viewer_role == 'doctor' %}Doctor{% else %}Receptionist{% endif %}</p>
     <h1>Today's Appointments</h1>
 
     <p><strong>Date:</strong> {{ today }}</p>
 
-    <div class="action-row" style="margin-bottom: 1rem;">
-        <a class="btn btn-primary" href="{% url 'receptionist_doctor_schedule_list' %}">
-            Manage Doctor Schedules
-        </a>
-    </div>
+    {% if viewer_role == 'receptionist' %}
+        <div class="action-row" style="margin-bottom: 1rem;">
+            <a class="btn btn-primary" href="{% url 'receptionist_doctor_schedule_list' %}">
+                Manage Doctor Schedules
+            </a>
+        </div>
+    {% endif %}
 
     {% if appointments %}
         {% for appointment in appointments %}
             <div class="card" style="margin-top: 16px;">
                 <h3>
-                    {{ appointment.patient.user.first_name }}
-                    {{ appointment.patient.user.last_name }}
+                    {{ appointment.patient.user.get_full_name|default:appointment.patient.user.username }}
                 </h3>
 
                 <p>
                     <strong>Doctor:</strong>
-                    Dr. {{ appointment.doctor.user.first_name }}
-                    {{ appointment.doctor.user.last_name }}
+                    Dr. {{ appointment.doctor.user.get_full_name|default:appointment.doctor.user.username }}
                 </p>
 
                 <p>
@@ -45,19 +45,35 @@
                 {% endif %}
 
                 <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px;">
-                    {% if appointment.status != "checked_in" and appointment.status != "cancelled" and appointment.status != "completed" and appointment.status != "no_show" and appointment.status != "declined" %}
+                    {% if viewer_role == 'receptionist' or viewer_role == 'doctor' %}
+                        {% if appointment.status != "checked_in" and appointment.status != "cancelled" and appointment.status != "completed" and appointment.status != "no_show" and appointment.status != "declined" %}
                         <form method="POST" action="{% url 'check_in_local' appointment.id %}">
                             {% csrf_token %}
                             <button class="btn btn-primary" type="submit">
                                 Check In
                             </button>
                         </form>
+                        {% endif %}
                     {% endif %}
 
-                    {% if appointment.status != "cancelled" and appointment.status != "completed" and appointment.status != "no_show" and appointment.status != "declined" %}
-                        <a class="btn btn-soft"
-                        href="{% url 'receptionist_reschedule_appointment' appointment.id %}">
+                    {% if appointment.status != "cancelled" and appointment.status != "checked_in" and appointment.status != "completed" and appointment.status != "no_show" and appointment.status != "declined" %}
+                        <form method="POST" action="{% url 'mark_no_show_local' appointment.id %}">
+                            {% csrf_token %}
+                            <button class="btn btn-soft" type="submit">
+                                Mark No Show
+                            </button>
+                        </form>
+                    {% endif %}
+
+                    {% if viewer_role == 'receptionist' and appointment.status != "cancelled" and appointment.status != "completed" and appointment.status != "no_show" and appointment.status != "declined" %}
+                        <a class="btn btn-soft" href="{% url 'receptionist_reschedule_appointment' appointment.id %}">
                             Reschedule
+                        </a>
+                    {% endif %}
+
+                    {% if viewer_role == 'doctor' and appointment.status == "checked_in" %}
+                        <a class="btn btn-primary" href="{% url 'fill_consultation' appointment.id %}">
+                            Fill Consultation
                         </a>
                     {% endif %}
                 </div>

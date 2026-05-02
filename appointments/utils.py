@@ -2,17 +2,18 @@ from datetime import datetime, timedelta
 from accounts.models import DoctorWeeklySchedule, DoctorScheduleException
 from .models import Appointment, AppointmentStatus
 
-def generate_slots(start_time, end_time, duration=30):
+def generate_slots(start_time, end_time, duration=30, buffer_minutes=5):
     slots = []
     current = datetime.combine(datetime.today(), start_time)
     end = datetime.combine(datetime.today(), end_time)
+    step = timedelta(minutes=duration + buffer_minutes)
 
     while current + timedelta(minutes=duration) <= end:
         slot_start = current.time()
         slot_end = (current + timedelta(minutes=duration)).time()
 
         slots.append((slot_start, slot_end))
-        current += timedelta(minutes=duration)
+        current += step
 
     return slots
 
@@ -46,8 +47,10 @@ def get_available_slots(doctor, date, exclude_appointment_id=None):
         start_time = schedule.start_time
         end_time = schedule.end_time
 
+    buffer_minutes = getattr(doctor, 'buffer_minutes', 5) or 5
+
     # Generate all slots
-    all_slots = generate_slots(start_time, end_time)
+    all_slots = generate_slots(start_time, end_time, buffer_minutes=buffer_minutes)
 
     # Get booked slots
     booked = Appointment.objects.filter(

@@ -31,7 +31,7 @@ class PatientProfileAdmin(admin.ModelAdmin):
 
 @admin.register(DoctorProfile)
 class DoctorProfileAdmin(admin.ModelAdmin):
-	list_display = ('user', 'specialization', 'license_number', 'department')
+	list_display = ('user', 'specialization', 'license_number', 'department', 'buffer_minutes')
 	search_fields = ('user__username', 'user__email', 'license_number', 'specialization')
 
 

@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Analytics{% endblock %}
+
+{% block content %}
+<section class="panel-card">
+	<p class="kicker">Admin</p>
+	<h1>Analytics</h1>
+	<p class="muted">Simple live snapshot of appointments, patients, doctors, and no-show activity.</p>
+
+	<div class="card-list">
+		<div class="item-card">
+			<h3>Total Appointments</h3>
+			<p>{{ metrics.total_appointments }}</p>
+		</div>
+		<div class="item-card">
+			<h3>Appointments Today</h3>
+			<p>{{ metrics.today_appointments }}</p>
+		</div>
+		<div class="item-card">
+			<h3>Checked In Today</h3>
+			<p>{{ metrics.today_checked_in }}</p>
+		</div>
+		<div class="item-card">
+			<h3>Patients</h3>
+			<p>{{ metrics.patient_count }}</p>
+		</div>
+		<div class="item-card">
+			<h3>Doctors</h3>
+			<p>{{ metrics.doctor_count }}</p>
+		</div>
+		<div class="item-card">
+			<h3>No-Show Rate</h3>
+			<p>{{ metrics.no_show_rate }}%</p>
+		</div>
+	</div>
+
+	<div class="card-list" style="margin-top: 1.5rem;">
+		<div class="item-card">
+			<h3>Status Breakdown</h3>
+			<p class="muted">Pending: {{ status_counts.pending }}</p>
+			<p class="muted">Confirmed: {{ status_counts.confirmed }}</p>
+			<p class="muted">Checked In: {{ status_counts.checked_in }}</p>
+			<p class="muted">Completed: {{ status_counts.completed }}</p>
+			<p class="muted">Declined: {{ status_counts.declined }}</p>
+			<p class="muted">No Show: {{ status_counts.no_show }}</p>
+			<p class="muted">Cancelled: {{ status_counts.cancelled }}</p>
+		</div>
+
+		<div class="item-card">
+			<h3>Exports</h3>
+			<p class="muted">Download CSV files for reporting or spreadsheets.</p>
+			<div class="action-row">
+				<a class="btn btn-soft" href="{% url 'admin_export_appointments_csv' %}">Appointments CSV</a>
+				<a class="btn btn-soft" href="{% url 'admin_export_patients_csv' %}">Patients CSV</a>
+				<a class="btn btn-soft" href="{% url 'admin_export_doctors_csv' %}">Doctors CSV</a>
+			</div>
+		</div>
+	</div>
+
+	<div class="action-row" style="margin-top: 1.5rem;">
+		<a class="btn btn-primary" href="{% url 'admin_dashboard' %}">Back to Admin Dashboard</a>
+	</div>
+</section>
+{% endblock %}

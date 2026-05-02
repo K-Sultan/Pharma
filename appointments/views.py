@@ -176,15 +176,19 @@ def _apply_staff_appointment_tab(queryset, tab):
     return queryset
 
 
-def _mark_overdue_pending_appointments_as_no_show(queryset):
+def _mark_overdue_appointments_as_no_show(queryset):
     today = timezone.localdate()
-    current_time = timezone.localtime().time()
 
-    overdue_pending = queryset.filter(status=AppointmentStatus.PENDING).filter(
-        models.Q(date__lt=today) | models.Q(date=today, start_time__lte=current_time)
+    overdue_appointments = queryset.filter(date__lt=today).exclude(
+        status__in=[
+            AppointmentStatus.CHECKED_IN,
+            AppointmentStatus.COMPLETED,
+            AppointmentStatus.CANCELLED,
+            AppointmentStatus.NO_SHOW,
+        ]
     )
 
-    return overdue_pending.update(status=AppointmentStatus.NO_SHOW)
+    return overdue_appointments.update(status=AppointmentStatus.NO_SHOW)
 
 
 def _update_staff_appointment_status(*, appointment, new_status):
@@ -198,6 +202,23 @@ def _update_staff_appointment_status(*, appointment, new_status):
         return appointment, "unchanged"
 
     appointment.status = new_status
+    appointment.save(update_fields=["status"])
+    return appointment, None
+
+
+def _set_appointment_no_show(*, appointment):
+    if appointment.status == AppointmentStatus.CANCELLED:
+        return None, "cancelled"
+    if appointment.date > timezone.localdate():
+        return None, "future_only"
+    if appointment.status == AppointmentStatus.CHECKED_IN or getattr(appointment, "consultation_record", None) is not None:
+        return None, "checked_in"
+    if appointment.status == AppointmentStatus.COMPLETED:
+        return None, "completed"
+    if appointment.status == AppointmentStatus.NO_SHOW:
+        return appointment, "unchanged"
+
+    appointment.status = AppointmentStatus.NO_SHOW
     appointment.save(update_fields=["status"])
     return appointment, None
 
@@ -557,7 +578,7 @@ def appointments_hub(request):
     tab = request.GET.get("tab") or "pending"
     queryset = _appointment_management_queryset()
 
-    _mark_overdue_pending_appointments_as_no_show(queryset)
+    _mark_overdue_appointments_as_no_show(queryset)
 
     if request.user.role == UserRole.DOCTOR and not request.user.is_superuser:
         doctor_profile = get_object_or_404(DoctorProfile, user=request.user)
@@ -625,14 +646,26 @@ def staff_appointment_status_update(request, appointment_id):
     elif action == "decline":
         new_status = AppointmentStatus.DECLINED
         success_message = "Appointment declined."
+    elif action == "no_show":
+        new_status = AppointmentStatus.NO_SHOW
+        success_message = "Appointment marked as no-show."
     else:
         messages.error(request, "Invalid appointment action.")
         return redirect(f"{reverse('appointments_hub')}?tab={tab}")
 
-    _, error_code = _update_staff_appointment_status(appointment=appointment, new_status=new_status)
+    if new_status == AppointmentStatus.NO_SHOW:
+        _, error_code = _set_appointment_no_show(appointment=appointment)
+    else:
+        _, error_code = _update_staff_appointment_status(appointment=appointment, new_status=new_status)
 
     if error_code == "cancelled":
         messages.error(request, "Cancelled appointments cannot be updated.")
+    elif error_code == "future_only":
+        messages.error(request, "Future appointments cannot be marked as no-show.")
+    elif error_code == "checked_in":
+        messages.error(request, "Checked-in appointments cannot be marked as no-show.")
+    elif error_code == "completed":
+        messages.error(request, "Completed appointments cannot be marked as no-show.")
     elif error_code == "unchanged":
         messages.info(request, "That appointment is already in the requested status.")
     elif error_code == "invalid":
@@ -900,6 +933,32 @@ class AppointmentStatusUpdateAPIView(APIView):
 
             return Response({"appointment": AppointmentSerializer(appointment).data})
 
+        if new_status == AppointmentStatus.NO_SHOW:
+            appointment, error_code = _set_appointment_no_show(appointment=appointment)
+
+            if error_code == "cancelled":
+                return Response(
+                    {"detail": "Cancelled appointments cannot be updated."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if error_code == "future_only":
+                return Response(
+                    {"detail": "Future appointments cannot be marked as no-show."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if error_code == "checked_in":
+                return Response(
+                    {"detail": "Checked-in appointments cannot be marked as no-show."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if error_code == "completed":
+                return Response(
+                    {"detail": "Completed appointments cannot be marked as no-show."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            return Response({"appointment": AppointmentSerializer(appointment).data})
+
         if appointment.status == AppointmentStatus.CANCELLED:
             return Response(
                 {"detail": "Cancelled appointments cannot be updated."},
@@ -916,23 +975,6 @@ class AppointmentStatusUpdateAPIView(APIView):
             if appointment.status == AppointmentStatus.NO_SHOW:
                 return Response(
                     {"detail": "A no-show appointment cannot be marked as completed."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-        if new_status == AppointmentStatus.NO_SHOW:
-            if appointment.date > timezone.localdate():
-                return Response(
-                    {"detail": "Future appointments cannot be marked as no-show."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            if appointment.status == AppointmentStatus.COMPLETED:
-                return Response(
-                    {"detail": "A completed appointment cannot be marked as no-show."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            if getattr(appointment, "consultation_record", None) is not None:
-                return Response(
-                    {"detail": "Appointments with a consultation record cannot be marked as no-show."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -1065,13 +1107,22 @@ class PatientAppointmentsAPIView(APIView):
         )
 
 @login_required
-@role_required(UserRole.RECEPTIONIST)
 def check_in_local(request, appointment_id):
+    if request.user.role not in {UserRole.DOCTOR, UserRole.RECEPTIONIST}:
+        messages.error(request, "You do not have permission to check in appointments.")
+        return redirect('dashboard_redirect')
+
     appointment = get_object_or_404(Appointment, id=appointment_id)
+
+    if request.user.role == UserRole.DOCTOR:
+        doctor_profile = get_object_or_404(DoctorProfile, user=request.user)
+        if appointment.doctor_id != doctor_profile.id:
+            messages.error(request, "You can only check in your own appointments.")
+            return redirect('doctor_queue')
 
     if appointment.date != timezone.localdate():
         messages.error(request, "Only today's appointments can be checked in.")
-        return redirect('receptionist_dashboard')
+        return redirect('doctor_queue' if request.user.role == UserRole.DOCTOR else 'receptionist_dashboard')
 
     if appointment.status in [
         AppointmentStatus.CANCELLED,
@@ -1080,7 +1131,7 @@ def check_in_local(request, appointment_id):
         AppointmentStatus.NO_SHOW
     ]:
         messages.error(request, "This appointment cannot be checked in.")
-        return redirect('receptionist_dashboard')
+        return redirect('doctor_queue' if request.user.role == UserRole.DOCTOR else 'receptionist_dashboard')
 
     appointment.status = AppointmentStatus.CHECKED_IN
     appointment.save(update_fields=['status'])
@@ -1092,7 +1143,7 @@ def check_in_local(request, appointment_id):
     )
 
     messages.success(request, "Patient checked in successfully.")
-    return redirect('receptionist_dashboard')
+    return redirect('doctor_queue' if request.user.role == UserRole.DOCTOR else 'receptionist_dashboard')
 
 @login_required
 @role_required(UserRole.RECEPTIONIST)
