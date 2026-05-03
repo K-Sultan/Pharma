@@ -593,7 +593,7 @@ def appointments_hub(request):
     appointments = _apply_staff_appointment_tab(filtered_queryset, tab).order_by("date", "start_time")
 
     tab_querystrings = {}
-    for tab_name in ["pending", "confirmed", "declined", "no_show", "all"]:
+    for tab_name in ["pending", "confirmed","checked_in", "declined", "no_show", "all"]:
         query_params = request.GET.copy()
         query_params["tab"] = tab_name
         tab_querystrings[tab_name] = query_params.urlencode()

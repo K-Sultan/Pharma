@@ -63,7 +63,7 @@
     <div class="action-row">
         <a class="btn {% if tab == 'pending' %}btn-primary{% else %}btn-soft{% endif %}" href="{% url 'appointments_hub' %}?{{ tab_querystrings.pending }}">Pending ({{ counts.pending }})</a>
         <a class="btn {% if tab == 'confirmed' %}btn-primary{% else %}btn-soft{% endif %}" href="{% url 'appointments_hub' %}?{{ tab_querystrings.confirmed }}">Confirmed ({{ counts.confirmed }})</a>
-        <a class="btn {% if tab == 'checked_in' %}btn-primary{% else %}btn-soft{% endif %}" href="{% url 'appointments_hub' %}?{{ tab_querystrings.checked_in }}">Checked In ({{ counts.checked_in }})</a>
+        <a class="btn {% if tab == 'checked_in' %}btn-primary{% else %}btn-soft{% endif %}" href="{% url 'appointments_hub' %}?{{ tab_querystrings.checked_in }}">Check-In ({{ counts.checked_in }})</a>
         <a class="btn {% if tab == 'declined' %}btn-primary{% else %}btn-soft{% endif %}" href="{% url 'appointments_hub' %}?{{ tab_querystrings.declined }}">Declined ({{ counts.declined }})</a>
         <a class="btn {% if tab == 'no_show' %}btn-primary{% else %}btn-soft{% endif %}" href="{% url 'appointments_hub' %}?{{ tab_querystrings.no_show }}">No Show ({{ counts.no_show }})</a>
         <a class="btn {% if tab == 'all' %}btn-primary{% else %}btn-soft{% endif %}" href="{% url 'appointments_hub' %}?{{ tab_querystrings.all }}">All ({{ counts.all }})</a>
