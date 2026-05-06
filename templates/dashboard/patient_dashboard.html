@@ -1,15 +1,45 @@
 {% extends 'base.html' %}
 
+{% block title %}Patient Dashboard{% endblock %}
+
 {% block content %}
 <section class="panel-card">
-	<h2>Patient Dashboard</h2>
-	<p>Welcome, <strong>{{ request.user.username }}</strong>.</p>
-	<p class="muted">You can monitor your appointments and consultation updates from here.</p>
-	<div class="action-row">
-		<a class="btn btn-primary" href="{% url 'appointment_list' %}">Book an Appointment</a>
-		<a class="btn btn-primary" href="/">Back to Home</a>
-		<a class="btn btn-soft" href="{% url 'patient_profile' %}">My Profile</a>
-		<a class="btn btn-soft" href="{% url 'patient_consultations' %}">My Consultation Summaries</a>
-	</div>
+    <p class="kicker">Patient</p>
+    <h1>Welcome, {{ request.user.username }}</h1>
+    <p class="muted">Manage your appointments and consultations from here.</p>
+
+    <div class="action-row">
+        <a class="btn btn-primary" href="{% url 'doctor_list' %}">Make Appointment</a>
+        <a class="btn btn-soft" href="{% url 'patient_appointments' %}">All Appointments</a>
+        <a class="btn btn-soft" href="{% url 'patient_consultations' %}">My Consultations</a>
+        <a class="btn btn-soft" href="{% url 'patient_profile' %}">My Profile</a>
+    </div>
+</section>
+
+<section class="panel-card">
+    <h2>Upcoming Appointments</h2>
+    <p class="muted">Today: <strong>{{ today }}</strong></p>
+
+    {% if upcoming %}
+        <div class="card-list">
+            {% for appt in upcoming %}
+                <article class="item-card">
+                    <h3>{{ appt.date }} &nbsp;·&nbsp; {{ appt.start_time|time:'H:i' }}</h3>
+                    <p class="muted">Dr. {{ appt.doctor.user.get_full_name|default:appt.doctor.user.username }} &nbsp;|&nbsp; {{ appt.get_status_display }}</p>
+                    <div class="action-row">
+                        {% if appt.can_reschedule %}
+                            <a class="btn btn-soft btn-sm" href="{% url 'reschedule_appointment' appt.id %}">Reschedule</a>
+                        {% endif %}
+                        <form method="post" action="{% url 'cancel_appointment' appt.id %}">
+                            {% csrf_token %}
+                            <button class="btn btn-danger btn-sm" type="submit">Cancel</button>
+                        </form>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="empty-state">No upcoming appointments. <a href="{% url 'appointment_list' %}" style="color:var(--clinic-teal);">Book one now →</a></p>
+    {% endif %}
 </section>
 {% endblock %}

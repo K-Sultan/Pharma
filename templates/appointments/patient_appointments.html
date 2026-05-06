@@ -6,45 +6,46 @@
 <section class="panel-card">
     <p class="kicker">Appointments</p>
     <h1>My Appointments</h1>
+
     <div class="action-row">
-        <a class="btn btn-primary" href="{% url 'appointment_list' %}">Book Another Appointment</a>
+        <a class="btn btn-primary" href="{% url 'doctor_list' %}">+ Book Another</a>
     </div>
 
-    <div class="card-list">
-        <div>
-            <h2>Upcoming Appointments</h2>
+    <div class="gap-section mt-3">
+
+        <div class="section-block">
+            <h2>Upcoming</h2>
             {% if upcoming %}
                 <div class="card-list">
                     {% for appt in upcoming %}
                         <article class="item-card">
-                            <h3>{{ appt.date }} - {{ appt.start_time|time:'H:i' }}</h3>
-                            <p class="muted">With Dr. {{ appt.doctor.user.username }}</p>
-                            <p class="muted">Status: {{ appt.get_status_display }}</p>
+                            <h3>{{ appt.date }} &nbsp;·&nbsp; {{ appt.start_time|time:'H:i' }}</h3>
+                            <p class="muted">Dr. {{ appt.doctor.user.username }} &nbsp;|&nbsp; {{ appt.get_status_display }}</p>
                             <div class="action-row">
                                 {% if appt.can_reschedule %}
-                                    <a class="btn btn-primary" href="{% url 'reschedule_appointment' appt.id %}">Reschedule</a>
+                                    <a class="btn btn-soft btn-sm" href="{% url 'reschedule_appointment' appt.id %}">Reschedule</a>
                                 {% endif %}
                                 <form method="post" action="{% url 'cancel_appointment' appt.id %}">
                                     {% csrf_token %}
-                                    <button class="btn btn-soft" type="submit">Cancel Appointment</button>
+                                    <button class="btn btn-danger btn-sm" type="submit">Cancel</button>
                                 </form>
                             </div>
                         </article>
                     {% endfor %}
                 </div>
             {% else %}
-                <p class="empty-state">You do not have any upcoming appointments.</p>
+                <p class="empty-state">No upcoming appointments.</p>
             {% endif %}
         </div>
 
-        <div>
-            <h2>Past Appointments</h2>
+        <div class="section-block">
+            <h2>Past</h2>
             {% if past %}
                 <div class="card-list">
                     {% for appt in past %}
                         <article class="item-card">
-                            <h3>{{ appt.date }} - {{ appt.start_time|time:'H:i' }}</h3>
-                            <p class="muted">With Dr. {{ appt.doctor.user.username }}</p>
+                            <h3>{{ appt.date }} &nbsp;·&nbsp; {{ appt.start_time|time:'H:i' }}</h3>
+                            <p class="muted">Dr. {{ appt.doctor.user.username }}</p>
                         </article>
                     {% endfor %}
                 </div>
@@ -53,15 +54,14 @@
             {% endif %}
         </div>
 
-        <div>
-            <h2>Cancelled Appointments</h2>
+        <div class="section-block">
+            <h2>Cancelled</h2>
             {% if cancelled %}
                 <div class="card-list">
                     {% for appt in cancelled %}
                         <article class="item-card">
-                            <h3>{{ appt.date }} - {{ appt.start_time|time:'H:i' }}</h3>
-                            <p class="muted">With Dr. {{ appt.doctor.user.username }}</p>
-                            <p class="muted">Status: {{ appt.get_status_display }}</p>
+                            <h3>{{ appt.date }} &nbsp;·&nbsp; {{ appt.start_time|time:'H:i' }}</h3>
+                            <p class="muted">Dr. {{ appt.doctor.user.username }} &nbsp;|&nbsp; {{ appt.get_status_display }}</p>
                         </article>
                     {% endfor %}
                 </div>
@@ -69,6 +69,7 @@
                 <p class="empty-state">No cancelled appointments.</p>
             {% endif %}
         </div>
+
     </div>
 </section>
 {% endblock %}

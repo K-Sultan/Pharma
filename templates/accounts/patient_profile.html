@@ -1,40 +1,42 @@
 {% extends 'base.html' %}
 
+{% block title %}My Profile{% endblock %}
+
 {% block content %}
-<div class="card">
+<section class="panel-card narrow">
     <p class="eyebrow">Patient Profile</p>
     <h1>My Profile</h1>
 
-    <p><strong>Name:</strong> {{ request.user.first_name }} {{ request.user.last_name }}</p>
-    <p><strong>Username:</strong> {{ request.user.username }}</p>
-    <p><strong>Email:</strong> {{ request.user.email }}</p>
+    <div class="section-block">
+        <p><strong>Name:</strong> {{ request.user.first_name }} {{ request.user.last_name }}</p>
+        <p><strong>Username:</strong> {{ request.user.username }}</p>
+        <p><strong>Email:</strong> {{ request.user.email }}</p>
+    </div>
 
-    <hr>
-
-    <form method="POST">
-        {% csrf_token %}
-
-        <label>Date of Birth</label>
-        {{ form.date_of_birth }}
-
-        <label>Phone</label>
-        {{ form.phone }}
-
-        <label>Address</label>
-        {{ form.address }}
-
-        <label>Emergency Contact</label>
-        {{ form.emergency_contact }}
-
-        <br><br>
-
-        <button class="btn btn-primary" type="submit">
-            Save Profile
-        </button>
-
-        <a class="btn btn-soft" href="{% url 'patient_dashboard' %}">
-            Back to Dashboard
-        </a>
-    </form>
-</div>
+    <div class="section-block">
+        <form method="POST" class="stack-form">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="id_date_of_birth">Date of Birth</label>
+                {{ form.date_of_birth }}
+            </div>
+            <div class="form-group">
+                <label for="id_phone">Phone</label>
+                {{ form.phone }}
+            </div>
+            <div class="form-group">
+                <label for="id_address">Address</label>
+                {{ form.address }}
+            </div>
+            <div class="form-group">
+                <label for="id_emergency_contact">Emergency Contact</label>
+                {{ form.emergency_contact }}
+            </div>
+            <div class="action-row">
+                <button class="btn btn-primary" type="submit">Save Profile</button>
+                <a class="btn btn-soft" href="{% url 'patient_dashboard' %}">← Back to Dashboard</a>
+            </div>
+        </form>
+    </div>
+</section>
 {% endblock %}

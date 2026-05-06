@@ -1,64 +1,52 @@
 {% extends 'base.html' %}
 
+{% block title %}Reschedule Appointment{% endblock %}
+
 {% block content %}
-<div class="card">
+<section class="panel-card">
     <p class="eyebrow">Receptionist</p>
     <h1>Reschedule Appointment</h1>
 
-    <p>
-        <strong>Patient:</strong>
-        {{ appointment.patient.user.first_name }}
-        {{ appointment.patient.user.last_name }}
-    </p>
+    <div class="section-block">
+        <p><strong>Patient:</strong> {{ appointment.patient.user.first_name }} {{ appointment.patient.user.last_name }}</p>
+        <p><strong>Doctor:</strong> Dr. {{ appointment.doctor.user.first_name }} {{ appointment.doctor.user.last_name }}</p>
+        <p><strong>Current slot:</strong> {{ appointment.date }} &nbsp;|&nbsp; {{ appointment.start_time }} – {{ appointment.end_time }}</p>
+    </div>
 
-    <p>
-        <strong>Doctor:</strong>
-        Dr. {{ appointment.doctor.user.first_name }}
-        {{ appointment.doctor.user.last_name }}
-    </p>
-
-    <p>
-        <strong>Current Appointment:</strong>
-        {{ appointment.date }} |
-        {{ appointment.start_time }} - {{ appointment.end_time }}
-    </p>
-
-    <hr>
-
-    <form method="GET">
-        <label>Choose new date</label>
-        <input type="date" name="date" value="{{ selected_date }}">
-        <button class="btn btn-primary" type="submit">
-            Show Available Slots
-        </button>
-    </form>
-
-    <hr>
-
-    <h3>Available Slots</h3>
+    <div class="section-block">
+        <form method="GET" class="stack-form">
+            <div class="form-group">
+                <label for="date">Choose new date</label>
+                <input type="date" id="date" name="date" value="{{ selected_date }}">
+            </div>
+            <div class="action-row">
+                <button class="btn btn-primary" type="submit">Show Available Slots</button>
+            </div>
+        </form>
+    </div>
 
     {% if slots %}
-        {% for start_time, end_time in slots %}
-            <form method="POST" style="margin-top: 12px;">
-                {% csrf_token %}
-                <input type="hidden" name="date" value="{{ selected_date }}">
-                <input type="hidden" name="start_time" value="{{ start_time }}">
-                <input type="hidden" name="end_time" value="{{ end_time }}">
-                <input type="text" name="reason" placeholder="Reason for reschedule">
-                
-                <button class="btn btn-soft" type="submit">
-                    {{ start_time }} - {{ end_time }}
-                </button>
-            </form>
-        {% endfor %}
-    {% else %}
-        <p>No available slots for this date.</p>
+        <div class="section-block">
+            <h3>Available Slots</h3>
+            <div class="slot-grid mt-2">
+                {% for start_time, end_time in slots %}
+                    <form method="POST" class="slot-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="date" value="{{ selected_date }}">
+                        <input type="hidden" name="start_time" value="{{ start_time }}">
+                        <input type="hidden" name="end_time" value="{{ end_time }}">
+                        <input type="hidden" name="reason" value="">
+                        <button class="btn btn-soft slot-button" type="submit">{{ start_time|time:"H:i" }} – {{ end_time|time:"H:i" }}</button>
+                    </form>
+                {% endfor %}
+            </div>
+        </div>
+    {% elif selected_date %}
+        <p class="empty-state mt-2">No available slots for this date.</p>
     {% endif %}
 
-    <br>
-
-    <a class="btn btn-soft" href="{% url 'receptionist_dashboard' %}">
-        Back to Receptionist Dashboard
-    </a>
-</div>
+    <div class="action-row mt-3">
+        <a class="btn btn-soft" href="{% url 'receptionist_dashboard' %}">← Back to Dashboard</a>
+    </div>
+</section>
 {% endblock %}

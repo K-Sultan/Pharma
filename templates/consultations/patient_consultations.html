@@ -1,48 +1,32 @@
 {% extends 'base.html' %}
 
+{% block title %}My Consultations{% endblock %}
+
 {% block content %}
-<div class="card">
+<section class="panel-card">
     <p class="eyebrow">Patient</p>
     <h1>My Consultation Summaries</h1>
+    <p class="muted">A read-only record of your completed consultations and diagnoses.</p>
 
     {% if consultations %}
-        {% for consultation in consultations %}
-            <div class="card" style="margin-top: 16px;">
-                <h3>
-                    Dr. {{ consultation.appointment.doctor.user.first_name }}
-                    {{ consultation.appointment.doctor.user.last_name }}
-                </h3>
-
-                <p>
-                    <strong>Date:</strong>
-                    {{ consultation.appointment.date }}
-                </p>
-
-                <p>
-                    <strong>Time:</strong>
-                    {{ consultation.appointment.start_time }}
-                    -
-                    {{ consultation.appointment.end_time }}
-                </p>
-
-                <p>
-                    <strong>Diagnosis:</strong>
-                    {{ consultation.diagnosis|default:"No diagnosis written." }}
-                </p>
-
-                <a class="btn btn-primary"
-                href="{% url 'patient_consultation_detail' consultation.id %}">
-                    View Summary
-                </a>
-            </div>
-        {% endfor %}
+        <div class="card-list">
+            {% for consultation in consultations %}
+                <article class="item-card">
+                    <h3>Dr. {{ consultation.appointment.doctor.user.first_name }} {{ consultation.appointment.doctor.user.last_name }}</h3>
+                    <p class="muted">{{ consultation.appointment.date }} &nbsp;|&nbsp; {{ consultation.appointment.start_time }} – {{ consultation.appointment.end_time }}</p>
+                    <p><strong>Diagnosis:</strong> {{ consultation.diagnosis|default:"No diagnosis written." }}</p>
+                    <div class="action-row">
+                        <a class="btn btn-primary btn-sm" href="{% url 'patient_consultation_detail' consultation.id %}">View Summary</a>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
     {% else %}
-        <p>No completed consultation summaries yet.</p>
+        <p class="empty-state mt-2">No completed consultation summaries yet.</p>
     {% endif %}
 
-    <br>
-    <a class="btn btn-soft" href="{% url 'patient_dashboard' %}">
-        Back to Dashboard
-    </a>
-</div>
+    <div class="action-row mt-3">
+        <a class="btn btn-soft" href="{% url 'patient_dashboard' %}">← Back to Dashboard</a>
+    </div>
+</section>
 {% endblock %}

@@ -1,61 +1,49 @@
 {% extends 'base.html' %}
 
+{% block title %}Consultation Summary{% endblock %}
+
 {% block content %}
-<div class="card">
+<section class="panel-card">
     <p class="eyebrow">Read-only Summary</p>
     <h1>Consultation Summary</h1>
 
-    <p>
-        <strong>Doctor:</strong>
-        Dr. {{ consultation.appointment.doctor.user.first_name }}
-        {{ consultation.appointment.doctor.user.last_name }}
-    </p>
+    <div class="section-block">
+        <p><strong>Doctor:</strong> Dr. {{ consultation.appointment.doctor.user.first_name }} {{ consultation.appointment.doctor.user.last_name }}</p>
+        <p><strong>Date:</strong> {{ consultation.appointment.date }}</p>
+        <p><strong>Time:</strong> {{ consultation.appointment.start_time }} – {{ consultation.appointment.end_time }}</p>
+    </div>
 
-    <p>
-        <strong>Date:</strong>
-        {{ consultation.appointment.date }}
-    </p>
+    <div class="section-block">
+        <h3>Diagnosis</h3>
+        <p>{{ consultation.diagnosis|default:"No diagnosis written." }}</p>
 
-    <p>
-        <strong>Time:</strong>
-        {{ consultation.appointment.start_time }}
-        -
-        {{ consultation.appointment.end_time }}
-    </p>
+        <h3>Clinical Notes</h3>
+        <p>{{ consultation.notes|default:"No notes written." }}</p>
 
-    <hr>
+        <h3>Requested Tests</h3>
+        <p>{{ consultation.requested_tests|default:"No tests requested." }}</p>
+    </div>
 
-    <h3>Diagnosis</h3>
-    <p>{{ consultation.diagnosis|default:"No diagnosis written." }}</p>
+    <div class="section-block">
+        <h3>Prescription</h3>
+        {% if consultation.prescriptions.all %}
+            <div class="card-list mt-2">
+                {% for item in consultation.prescriptions.all %}
+                    <article class="item-card">
+                        <strong>{{ item.drug }}</strong>
+                        <p class="muted">{{ item.dose }} &nbsp;|&nbsp; {{ item.duration }}</p>
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="muted">No prescription items.</p>
+        {% endif %}
+    </div>
 
-    <h3>Notes</h3>
-    <p>{{ consultation.notes|default:"No notes written." }}</p>
+    <p class="muted mt-2"><em>This summary is read-only. You cannot edit medical consultation records.</em></p>
 
-    <h3>Requested Tests</h3>
-    <p>{{ consultation.requested_tests|default:"No tests requested." }}</p>
-
-    <h3>Prescription</h3>
-
-    {% if consultation.prescriptions.all %}
-        <ul>
-            {% for item in consultation.prescriptions.all %}
-                <li>
-                    <strong>{{ item.drug }}</strong>
-                    — {{ item.dose }}
-                    — {{ item.duration }}
-                </li>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <p>No prescription items.</p>
-    {% endif %}
-
-    <hr>
-
-    <p><em>This summary is read-only. You cannot edit medical consultation records.</em></p>
-
-    <a class="btn btn-soft" href="{% url 'patient_consultations' %}">
-        Back to My Consultations
-    </a>
-</div>
+    <div class="action-row">
+        <a class="btn btn-soft" href="{% url 'patient_consultations' %}">← Back to My Consultations</a>
+    </div>
+</section>
 {% endblock %}

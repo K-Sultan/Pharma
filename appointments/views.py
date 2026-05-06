@@ -380,10 +380,6 @@ def _build_receptionist_reschedule_context(appointment, date_str=None):
     }, None
 
 
-@login_required
-def appointment_list_view(request):
-    return render(request, "appointments/appointment_list.html")
-
 
 @login_required
 def doctor_list(request):
@@ -542,7 +538,7 @@ def patient_appointments(request):
     patient = _get_patient_profile_or_none(request.user)
     if patient is None:
         messages.error(request, "Patient profile required.")
-        return redirect("appointment_list")
+        return redirect("appointments_hub")
 
     today = timezone.localdate()
     current_time = timezone.localtime().time()

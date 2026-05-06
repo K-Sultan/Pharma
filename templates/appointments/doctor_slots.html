@@ -5,44 +5,57 @@
 {% block content %}
 <section class="panel-card">
     <p class="kicker">Booking</p>
-    <h1>{% if appointment_to_reschedule %}Reschedule{% else %}{{ doctor.user.username }}{% endif %}</h1>
-    <p class="muted">Pick a date to inspect available slots, then confirm the time you want.</p>
+    <h1>
+        {% if appointment_to_reschedule %}
+            Reschedule Appointment
+        {% else %}
+            Dr. {{ doctor.user.username }}
+        {% endif %}
+    </h1>
+    <p class="muted">Pick a date to see available slots, then confirm the time you want.</p>
 
     {% if appointment_to_reschedule %}
-        <p class="muted">Rescheduling {{ appointment_to_reschedule.date }} at {{ appointment_to_reschedule.start_time|time:'H:i' }}.</p>
-        <p class="muted">Add an optional reason for the reschedule before picking a new slot.</p>
+        <p class="muted">Rescheduling: <strong>{{ appointment_to_reschedule.date }}</strong> at <strong>{{ appointment_to_reschedule.start_time|time:'H:i' }}</strong></p>
     {% endif %}
 
-    <form method="get" class="stack-form schedule-editor">
-        <label for="id_date">Select date</label>
-        <input id="id_date" type="date" name="date" value="{{ selected_date }}" min="{{ tomorrow|date:'Y-m-d' }}">
-        {% if appointment_to_reschedule %}
-            <input type="hidden" name="appointment" value="{{ appointment_to_reschedule.id }}">
-        {% endif %}
-        <div class="action-row">
-            <button class="btn btn-primary" type="submit">Check Availability</button>
-        </div>
-    </form>
+    <div class="section-block">
+        <form method="get" class="stack-form">
+            <div class="form-group">
+                <label for="id_date">Select date</label>
+                <input id="id_date" type="date" name="date" value="{{ selected_date }}" min="{{ tomorrow|date:'Y-m-d' }}">
+            </div>
+            {% if appointment_to_reschedule %}
+                <input type="hidden" name="appointment" value="{{ appointment_to_reschedule.id }}">
+            {% endif %}
+            <div class="action-row">
+                <button class="btn btn-primary" type="submit">Check Availability</button>
+            </div>
+        </form>
+    </div>
 
     {% if slots %}
-        <div class="card-list">
-            <h2>Available Slots</h2>
+        <div class="section-block">
+            <h3>Available Slots for {{ selected_date }}</h3>
             <form class="stack-form" method="post" action="{{ slot_action_url }}">
                 {% csrf_token %}
                 <input type="hidden" name="date" value="{{ selected_date }}">
                 {% if appointment_to_reschedule %}
-                    <label for="reschedule_reason" class="muted">Reason for reschedule (optional)</label>
-                    <textarea id="reschedule_reason" name="reason" rows="2" placeholder="Why do you need this change?"></textarea>
+                    <div class="form-group">
+                        <label for="reschedule_reason">Reason for reschedule <span class="muted">(optional)</span></label>
+                        <textarea id="reschedule_reason" name="reason" rows="2" placeholder="Why do you need this change?"></textarea>
+                    </div>
                 {% endif %}
                 <div class="slot-grid">
-                {% for start, end in slots %}
-                    <button class="btn btn-primary slot-button" type="submit" name="slot" value="{{ start|time:'H:i:s' }}|{{ end|time:'H:i:s' }}">{{ start|time:'H:i' }} - {{ end|time:'H:i' }}</button>
-                {% endfor %}
+                    {% for start, end in slots %}
+                        <button class="btn btn-soft slot-button" type="submit" name="slot" value="{{ start|time:'H:i:s' }}|{{ end|time:'H:i:s' }}">
+                            {{ start|time:'H:i' }} – {{ end|time:'H:i' }}
+                        </button>
+                    {% endfor %}
                 </div>
             </form>
         </div>
-    {% else %}
-        <p class="empty-state">No available slots for the selected date.</p>
+    {% elif selected_date %}
+        <p class="empty-state mt-2">No available slots for the selected date.</p>
     {% endif %}
 </section>
 {% endblock %}

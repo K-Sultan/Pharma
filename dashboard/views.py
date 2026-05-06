@@ -84,13 +84,66 @@ def dashboard_redirect(request):
 @login_required
 @role_required(UserRole.PATIENT)
 def patient_dashboard(request):
-    return render(request, 'dashboard/patient_dashboard.html')
+    from appointments.models import Appointment, AppointmentStatus
+    from accounts.models import PatientProfile
+
+    today = timezone.localdate()
+    current_time = timezone.localtime().time()
+
+    try:
+        patient = request.user.patient_profile
+    except PatientProfile.DoesNotExist:
+        patient = None
+
+    upcoming = []
+    if patient:
+        raw_upcoming = (
+            patient.appointments
+            .filter(date__gte=today)
+            .exclude(status__in=[
+                AppointmentStatus.CANCELLED,
+                AppointmentStatus.COMPLETED,
+                AppointmentStatus.NO_SHOW,
+            ])
+            .select_related('doctor__user')
+            .order_by('date', 'start_time')
+        )
+        for appt in raw_upcoming:
+            appt.can_reschedule = appt.date > today or (
+                appt.date == today and appt.start_time > current_time
+            )
+            upcoming.append(appt)
+
+    return render(request, 'dashboard/patient_dashboard.html', {
+        'upcoming': upcoming,
+        'today': today,
+    })
 
 
 @login_required
 @role_required(UserRole.DOCTOR)
 def doctor_dashboard(request):
-    return render(request, 'dashboard/doctor_dashboard.html')
+    doctor_profile = get_object_or_404(DoctorProfile, user=request.user)
+    today = timezone.localdate()
+
+    queue = (
+        Appointment.objects
+        .filter(doctor=doctor_profile, date=today)
+        .select_related('patient__user', 'consultation_record')
+        .order_by('start_time')
+    )
+
+    for appointment in queue:
+        consultation_record = getattr(appointment, 'consultation_record', None)
+        appointment.waiting_time = _format_waiting_time(
+            consultation_record.check_in_time if consultation_record else None
+        )
+
+    return render(request, 'dashboard/doctor_dashboard.html', {
+        'queue': queue,
+        'today': today,
+        'viewer_role': UserRole.DOCTOR,
+    })
 
 
 @login_required

@@ -1,52 +1,58 @@
 {% extends 'base.html' %}
 
+{% block title %}Fill Consultation{% endblock %}
+
 {% block content %}
-<div class="card">
+<section class="panel-card">
     <p class="eyebrow">Consultation</p>
-    <h1>Fill Consultation</h1>
+    <h1>Fill Consultation Record</h1>
 
-    <p>
-        Patient:
-        {{ appointment.patient.user.first_name }}
-        {{ appointment.patient.user.last_name }}
-    </p>
+    <div class="section-block">
+        <p><strong>Patient:</strong> {{ appointment.patient.user.first_name }} {{ appointment.patient.user.last_name }}</p>
+        <p><strong>Appointment:</strong> {{ appointment.date }} &nbsp;|&nbsp; {{ appointment.start_time }} – {{ appointment.end_time }}</p>
+    </div>
 
-    <p>
-        Appointment:
-        {{ appointment.date }} |
-        {{ appointment.start_time }} - {{ appointment.end_time }}
-    </p>
+    <div class="section-block">
+        <form method="POST" class="stack-form">
+            {% csrf_token %}
 
-    <form method="POST">
-        {% csrf_token %}
+            <div class="form-group">
+                <label for="notes">Clinical Notes</label>
+                <textarea id="notes" name="notes" rows="4">{{ consultation.notes }}</textarea>
+            </div>
 
-        <label>Notes</label>
-        <textarea name="notes" rows="4">{{ consultation.notes }}</textarea>
+            <div class="form-group">
+                <label for="diagnosis">Diagnosis</label>
+                <textarea id="diagnosis" name="diagnosis" rows="4">{{ consultation.diagnosis }}</textarea>
+            </div>
 
-        <label>Diagnosis</label>
-        <textarea name="diagnosis" rows="4">{{ consultation.diagnosis }}</textarea>
+            <div class="form-group">
+                <label for="requested_tests">Requested Tests</label>
+                <textarea id="requested_tests" name="requested_tests" rows="3">{{ consultation.requested_tests }}</textarea>
+            </div>
 
-        <label>Requested Tests</label>
-        <textarea name="requested_tests" rows="3">{{ consultation.requested_tests }}</textarea>
+            <hr>
+            <h3>Prescription Item</h3>
 
-        <hr>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="drug">Drug</label>
+                    <input type="text" id="drug" name="drug">
+                </div>
+                <div class="form-group">
+                    <label for="dose">Dose</label>
+                    <input type="text" id="dose" name="dose">
+                </div>
+                <div class="form-group">
+                    <label for="duration">Duration</label>
+                    <input type="text" id="duration" name="duration">
+                </div>
+            </div>
 
-        <h3>Prescription Item</h3>
-
-        <label>Drug</label>
-        <input type="text" name="drug">
-
-        <label>Dose</label>
-        <input type="text" name="dose">
-
-        <label>Duration</label>
-        <input type="text" name="duration">
-
-        <br><br>
-
-        <button class="btn btn-primary" type="submit">
-            Save Consultation and Complete Appointment
-        </button>
-    </form>
-</div>
+            <div class="action-row">
+                <button class="btn btn-primary" type="submit">Save &amp; Complete Appointment</button>
+            </div>
+        </form>
+    </div>
+</section>
 {% endblock %}

@@ -60,7 +60,7 @@
         </div>
     </form>
 
-    <div class="action-row">
+    <div class="action-row mb-3">
         <a class="btn {% if tab == 'pending' %}btn-primary{% else %}btn-soft{% endif %}" href="{% url 'appointments_hub' %}?{{ tab_querystrings.pending }}">Pending ({{ counts.pending }})</a>
         <a class="btn {% if tab == 'confirmed' %}btn-primary{% else %}btn-soft{% endif %}" href="{% url 'appointments_hub' %}?{{ tab_querystrings.confirmed }}">Confirmed ({{ counts.confirmed }})</a>
         <a class="btn {% if tab == 'checked_in' %}btn-primary{% else %}btn-soft{% endif %}" href="{% url 'appointments_hub' %}?{{ tab_querystrings.checked_in }}">Check-In ({{ counts.checked_in }})</a>
@@ -70,7 +70,7 @@
     </div>
 
     {% if appointments %}
-        <div class="card-list">
+        <div class="card-list mt-3">
             {% for appointment in appointments %}
                 <article class="item-card">
                     <h3>Appointment #{{ appointment.id }} - {{ appointment.patient.user.get_full_name|default:appointment.patient.user.username }} with Dr. {{ appointment.doctor.user.username }}</h3>
@@ -99,7 +99,7 @@
             {% endfor %}
         </div>
     {% else %}
-        <p class="empty-state">No appointments found for this tab.</p>
+        <p class="empty-state mt-3">No appointments found for this tab.</p>
     {% endif %}
 </section>
 {% endblock %}
