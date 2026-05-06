@@ -39,7 +39,7 @@
             {% endfor %}
         </div>
     {% else %}
-        <p class="empty-state">No upcoming appointments. <a href="{% url 'appointment_list' %}" style="color:var(--clinic-teal);">Book one now →</a></p>
+        <p class="empty-state">No upcoming appointments. <a href="{% url 'doctor_list' %}" style="color:var(--clinic-teal);">Book one now →</a></p>
     {% endif %}
 </section>
 {% endblock %}
