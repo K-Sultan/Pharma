@@ -3,26 +3,46 @@
 {% block title %}My Profile{% endblock %}
 
 {% block content %}
-<section class="panel-card narrow">
-    <p class="eyebrow">Patient Profile</p>
-    <h1>My Profile</h1>
-
-    <div class="section-block">
-        <p><strong>Name:</strong> {{ request.user.first_name }} {{ request.user.last_name }}</p>
-        <p><strong>Username:</strong> {{ request.user.username }}</p>
-        <p><strong>Email:</strong> {{ request.user.email }}</p>
+<section class="page-hero compact">
+    <div class="hero-content">
+        <p class="eyebrow">Patient Profile</p>
+        <h1>My Profile</h1>
+        <p class="muted">Keep your contact and emergency information current.</p>
     </div>
+</section>
 
-    <div class="section-block">
+<section class="dashboard-grid">
+    <aside class="surface-panel">
+        <h2>Account</h2>
+        <div class="detail-grid">
+            <div class="detail-item">
+                <span class="detail-label">Name</span>
+                <span class="detail-value">{{ request.user.first_name }} {{ request.user.last_name }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Username</span>
+                <span class="detail-value">{{ request.user.username }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Email</span>
+                <span class="detail-value">{{ request.user.email }}</span>
+            </div>
+        </div>
+    </aside>
+
+    <div class="surface-panel">
+        <h2>Profile Details</h2>
         <form method="POST" class="stack-form">
             {% csrf_token %}
-            <div class="form-group">
-                <label for="id_date_of_birth">Date of Birth</label>
-                {{ form.date_of_birth }}
-            </div>
-            <div class="form-group">
-                <label for="id_phone">Phone</label>
-                {{ form.phone }}
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="id_date_of_birth">Date of Birth</label>
+                    {{ form.date_of_birth }}
+                </div>
+                <div class="form-group">
+                    <label for="id_phone">Phone</label>
+                    {{ form.phone }}
+                </div>
             </div>
             <div class="form-group">
                 <label for="id_address">Address</label>
@@ -34,7 +54,7 @@
             </div>
             <div class="action-row">
                 <button class="btn btn-primary" type="submit">Save Profile</button>
-                <a class="btn btn-soft" href="{% url 'patient_dashboard' %}">← Back to Dashboard</a>
+                <a class="btn btn-soft" href="{% url 'patient_dashboard' %}">Back to Dashboard</a>
             </div>
         </form>
     </div>

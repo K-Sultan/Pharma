@@ -3,32 +3,51 @@
 {% block title %}Reschedule Appointment{% endblock %}
 
 {% block content %}
-<section class="panel-card">
-    <p class="eyebrow">Receptionist</p>
-    <h1>Reschedule Appointment</h1>
-
-    <div class="section-block">
-        <p><strong>Patient:</strong> {{ appointment.patient.user.first_name }} {{ appointment.patient.user.last_name }}</p>
-        <p><strong>Doctor:</strong> Dr. {{ appointment.doctor.user.first_name }} {{ appointment.doctor.user.last_name }}</p>
-        <p><strong>Current slot:</strong> {{ appointment.date }} &nbsp;|&nbsp; {{ appointment.start_time }} – {{ appointment.end_time }}</p>
+<section class="page-hero">
+    <div class="hero-content">
+        <p class="eyebrow">Receptionist</p>
+        <h1>Reschedule Appointment</h1>
+        <p class="muted">Select a new date, then choose an available replacement slot.</p>
     </div>
 
-    <div class="section-block">
+    <div class="hero-side">
+        <div class="detail-grid">
+            <div class="detail-item">
+                <span class="detail-label">Patient</span>
+                <span class="detail-value">{{ appointment.patient.user.first_name }} {{ appointment.patient.user.last_name }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Doctor</span>
+                <span class="detail-value">Dr. {{ appointment.doctor.user.first_name }} {{ appointment.doctor.user.last_name }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Current slot</span>
+                <span class="detail-value">{{ appointment.date }} | {{ appointment.start_time }} - {{ appointment.end_time }}</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="dashboard-grid">
+    <div class="surface-panel">
+        <h2>Find Slots</h2>
         <form method="GET" class="stack-form">
             <div class="form-group">
                 <label for="date">Choose new date</label>
                 <input type="date" id="date" name="date" value="{{ selected_date }}">
             </div>
-            <div class="action-row">
-                <button class="btn btn-primary" type="submit">Show Available Slots</button>
-            </div>
+            <button class="btn btn-primary" type="submit">Show Available Slots</button>
         </form>
+
+        <div class="action-row mt-3">
+            <a class="btn btn-soft" href="{% url 'receptionist_dashboard' %}">Back to Dashboard</a>
+        </div>
     </div>
 
-    {% if slots %}
-        <div class="section-block">
-            <h3>Available Slots</h3>
-            <div class="slot-grid mt-2">
+    <div class="surface-panel">
+        <h2>Available Slots</h2>
+        {% if slots %}
+            <div class="slot-grid">
                 {% for start_time, end_time in slots %}
                     <form method="POST" class="slot-form">
                         {% csrf_token %}
@@ -36,17 +55,15 @@
                         <input type="hidden" name="start_time" value="{{ start_time }}">
                         <input type="hidden" name="end_time" value="{{ end_time }}">
                         <input type="hidden" name="reason" value="">
-                        <button class="btn btn-soft slot-button" type="submit">{{ start_time|time:"H:i" }} – {{ end_time|time:"H:i" }}</button>
+                        <button class="btn btn-soft slot-button" type="submit">{{ start_time|time:"H:i" }} - {{ end_time|time:"H:i" }}</button>
                     </form>
                 {% endfor %}
             </div>
-        </div>
-    {% elif selected_date %}
-        <p class="empty-state mt-2">No available slots for this date.</p>
-    {% endif %}
-
-    <div class="action-row mt-3">
-        <a class="btn btn-soft" href="{% url 'receptionist_dashboard' %}">← Back to Dashboard</a>
+        {% elif selected_date %}
+            <p class="empty-state">No available slots for this date.</p>
+        {% else %}
+            <p class="empty-state">Choose a date to show open times.</p>
+        {% endif %}
     </div>
 </section>
 {% endblock %}

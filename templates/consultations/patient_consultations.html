@@ -3,18 +3,24 @@
 {% block title %}My Consultations{% endblock %}
 
 {% block content %}
-<section class="panel-card">
-    <p class="eyebrow">Patient</p>
-    <h1>My Consultation Summaries</h1>
-    <p class="muted">A read-only record of your completed consultations and diagnoses.</p>
+<section class="page-hero compact">
+    <div class="hero-content">
+        <p class="eyebrow">Patient</p>
+        <h1>My Consultation Summaries</h1>
+        <p class="muted">A read-only record of completed consultations and diagnoses.</p>
+    </div>
+</section>
 
+<section class="surface-panel">
     {% if consultations %}
         <div class="card-list">
             {% for consultation in consultations %}
-                <article class="item-card">
-                    <h3>Dr. {{ consultation.appointment.doctor.user.first_name }} {{ consultation.appointment.doctor.user.last_name }}</h3>
-                    <p class="muted">{{ consultation.appointment.date }} &nbsp;|&nbsp; {{ consultation.appointment.start_time }} – {{ consultation.appointment.end_time }}</p>
-                    <p><strong>Diagnosis:</strong> {{ consultation.diagnosis|default:"No diagnosis written." }}</p>
+                <article class="item-card appointment-card">
+                    <div>
+                        <h3>Dr. {{ consultation.appointment.doctor.user.first_name }} {{ consultation.appointment.doctor.user.last_name }}</h3>
+                        <p class="muted">{{ consultation.appointment.date }} | {{ consultation.appointment.start_time }} - {{ consultation.appointment.end_time }}</p>
+                        <p><strong>Diagnosis:</strong> {{ consultation.diagnosis|default:"No diagnosis written." }}</p>
+                    </div>
                     <div class="action-row">
                         <a class="btn btn-primary btn-sm" href="{% url 'patient_consultation_detail' consultation.id %}">View Summary</a>
                     </div>
@@ -22,11 +28,11 @@
             {% endfor %}
         </div>
     {% else %}
-        <p class="empty-state mt-2">No completed consultation summaries yet.</p>
+        <p class="empty-state">No completed consultation summaries yet.</p>
     {% endif %}
 
     <div class="action-row mt-3">
-        <a class="btn btn-soft" href="{% url 'patient_dashboard' %}">← Back to Dashboard</a>
+        <a class="btn btn-soft" href="{% url 'patient_dashboard' %}">Back to Dashboard</a>
     </div>
 </section>
 {% endblock %}

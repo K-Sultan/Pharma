@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Clinic System{% endblock %}</title>
     {% load static %}
-    <link rel="stylesheet" href="{% static 'css/main.css' %}?v=clinic-v6">
+    <link rel="stylesheet" href="{% static 'css/main.css' %}?v=clinic-v8">
 </head>
 <body>
     <div class="page-shell">
@@ -19,9 +19,29 @@
                 {% endif %}
             </div>
 
+            {% if user.is_authenticated %}
+                <div class="nav-menu" aria-label="Primary navigation">
+                    <a class="nav-link" href="{% url 'dashboard_redirect' %}">Dashboard</a>
+                    {% if user.role == 'patient' %}
+                        <a class="nav-link" href="{% url 'doctor_list' %}">Book</a>
+                        <a class="nav-link" href="{% url 'patient_appointments' %}">Appointments</a>
+                        <a class="nav-link" href="{% url 'patient_consultations' %}">Consultations</a>
+                    {% elif user.role == 'doctor' %}
+                        <a class="nav-link" href="{% url 'appointments_hub' %}">Appointments</a>
+                        <a class="nav-link" href="{% url 'doctor_schedule' %}">Schedule</a>
+                    {% elif user.role == 'receptionist' %}
+                        <a class="nav-link" href="{% url 'appointments_hub' %}">Appointments</a>
+                        <a class="nav-link" href="{% url 'receptionist_doctor_schedule_list' %}">Schedules</a>
+                    {% elif user.role == 'admin' %}
+                        <a class="nav-link" href="{% url 'admin_analytics' %}">Analytics</a>
+                        <a class="nav-link" href="{% url 'appointments_hub' %}">Appointments</a>
+                    {% endif %}
+                </div>
+            {% endif %}
+
             <div class="nav-links">
                 {% if user.is_authenticated %}
-                    <a class="nav-link" href="{% url 'dashboard_redirect' %}">Dashboard</a>
+                    <span class="user-chip">{{ user.get_role_display|default:user.role }}</span>
                     <a class="btn btn-soft" href="{% url 'logout' %}">Logout</a>
                 {% else %}
                     <a class="nav-link" href="/">Home</a>

@@ -3,47 +3,70 @@
 {% block title %}Consultation Summary{% endblock %}
 
 {% block content %}
-<section class="panel-card">
-    <p class="eyebrow">Read-only Summary</p>
-    <h1>Consultation Summary</h1>
-
-    <div class="section-block">
-        <p><strong>Doctor:</strong> Dr. {{ consultation.appointment.doctor.user.first_name }} {{ consultation.appointment.doctor.user.last_name }}</p>
-        <p><strong>Date:</strong> {{ consultation.appointment.date }}</p>
-        <p><strong>Time:</strong> {{ consultation.appointment.start_time }} – {{ consultation.appointment.end_time }}</p>
+<section class="page-hero">
+    <div class="hero-content">
+        <p class="eyebrow">Read-only Summary</p>
+        <h1>Consultation Summary</h1>
+        <p class="muted">This record is available for review only.</p>
     </div>
 
-    <div class="section-block">
-        <h3>Diagnosis</h3>
-        <p>{{ consultation.diagnosis|default:"No diagnosis written." }}</p>
+    <div class="hero-side">
+        <div class="detail-grid">
+            <div class="detail-item">
+                <span class="detail-label">Doctor</span>
+                <span class="detail-value">Dr. {{ consultation.appointment.doctor.user.first_name }} {{ consultation.appointment.doctor.user.last_name }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Date</span>
+                <span class="detail-value">{{ consultation.appointment.date }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Time</span>
+                <span class="detail-value">{{ consultation.appointment.start_time }} - {{ consultation.appointment.end_time }}</span>
+            </div>
+        </div>
+    </div>
+</section>
 
-        <h3>Clinical Notes</h3>
-        <p>{{ consultation.notes|default:"No notes written." }}</p>
+<section class="dashboard-grid">
+    <div class="surface-panel">
+        <h2>Clinical Details</h2>
+        <div class="section-block">
+            <h3>Diagnosis</h3>
+            <p>{{ consultation.diagnosis|default:"No diagnosis written." }}</p>
+        </div>
 
-        <h3>Requested Tests</h3>
-        <p>{{ consultation.requested_tests|default:"No tests requested." }}</p>
+        <div class="section-block">
+            <h3>Clinical Notes</h3>
+            <p>{{ consultation.notes|default:"No notes written." }}</p>
+        </div>
+
+        <div class="section-block">
+            <h3>Requested Tests</h3>
+            <p>{{ consultation.requested_tests|default:"No tests requested." }}</p>
+        </div>
     </div>
 
-    <div class="section-block">
-        <h3>Prescription</h3>
+    <aside class="surface-panel">
+        <h2>Prescription</h2>
         {% if consultation.prescriptions.all %}
-            <div class="card-list mt-2">
+            <div class="card-list">
                 {% for item in consultation.prescriptions.all %}
                     <article class="item-card">
                         <strong>{{ item.drug }}</strong>
-                        <p class="muted">{{ item.dose }} &nbsp;|&nbsp; {{ item.duration }}</p>
+                        <p class="muted">{{ item.dose }} | {{ item.duration }}</p>
                     </article>
                 {% endfor %}
             </div>
         {% else %}
-            <p class="muted">No prescription items.</p>
+            <p class="empty-state">No prescription items.</p>
         {% endif %}
-    </div>
 
-    <p class="muted mt-2"><em>This summary is read-only. You cannot edit medical consultation records.</em></p>
+        <p class="muted mt-2"><em>This summary is read-only. You cannot edit medical consultation records.</em></p>
 
-    <div class="action-row">
-        <a class="btn btn-soft" href="{% url 'patient_consultations' %}">← Back to My Consultations</a>
-    </div>
+        <div class="action-row">
+            <a class="btn btn-soft" href="{% url 'patient_consultations' %}">Back to My Consultations</a>
+        </div>
+    </aside>
 </section>
 {% endblock %}

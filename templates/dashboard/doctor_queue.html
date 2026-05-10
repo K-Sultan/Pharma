@@ -1,36 +1,38 @@
 {% extends 'base.html' %}
 
+{% block title %}Today Queue{% endblock %}
+
 {% block content %}
-<div class="card">
-    <p class="eyebrow">Doctor</p>
-    <h1>Today Queue</h1>
+<section class="page-hero compact">
+    <div class="hero-content">
+        <p class="eyebrow">Doctor</p>
+        <h1>Today Queue</h1>
+        <p class="muted">Checked-in patients ready for consultation.</p>
+    </div>
+</section>
 
+<section class="surface-panel">
     {% if queue %}
-        {% for appointment in queue %}
-            <div class="card" style="margin-top: 16px;">
-                <h3>
-                    {{ appointment.patient.user.get_full_name|default:appointment.patient.user.username }}
-                </h3>
+        <div class="card-list">
+            {% for appointment in queue %}
+                <article class="item-card appointment-card">
+                    <div>
+                        <h3>{{ appointment.patient.user.get_full_name|default:appointment.patient.user.username }}</h3>
+                        <p class="muted">Time: {{ appointment.start_time }} - {{ appointment.end_time }}</p>
+                        {% if appointment.waiting_time %}
+                            <p class="muted">Waiting Time: {{ appointment.waiting_time }}</p>
+                        {% endif %}
+                        <p class="muted">Status: {{ appointment.get_status_display }}</p>
+                    </div>
 
-                <p>
-                    Time:
-                    {{ appointment.start_time }} - {{ appointment.end_time }}
-                </p>
-
-                {% if appointment.waiting_time %}
-                    <p>Waiting Time: {{ appointment.waiting_time }}</p>
-                {% endif %}
-
-                <p>Status: {{ appointment.get_status_display }}</p>
-
-                <a class="btn btn-primary"
-                href="{% url 'fill_consultation' appointment.id %}">
-                    Fill Consultation
-                </a>
-            </div>
-        {% endfor %}
+                    <div class="action-row">
+                        <a class="btn btn-primary" href="{% url 'fill_consultation' appointment.id %}">Fill Consultation</a>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
     {% else %}
-        <p>No checked-in patients for today.</p>
+        <p class="empty-state">No checked-in patients for today.</p>
     {% endif %}
-</div>
+</section>
 {% endblock %}

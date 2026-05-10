@@ -3,27 +3,58 @@
 {% block title %}Admin Dashboard{% endblock %}
 
 {% block content %}
-<section class="panel-card">
-	<h2>Admin Dashboard</h2>
-	<p>Welcome, <strong>{{ request.user.username }}</strong>.</p>
-	<p class="muted">Manage users, schedules, and overall clinic activity from one place.</p>
-	<div class="action-row">
-		<a class="btn btn-primary" href="{% url 'admin_analytics' %}">Analytics</a>
-		<a class="btn btn-primary" href="{% url 'appointments_hub' %}">Appointments</a>
-		<a class="btn btn-primary" href="{% url 'create_doctor' %}">Create Doctor</a>
-		<a class="btn btn-primary" href="{% url 'create_receptionist' %}">Create Receptionist</a>
-		<a class="btn btn-primary" href="/">Back to Home</a>
+<section class="page-hero">
+	<div class="hero-content">
+		<p class="kicker">Admin workspace</p>
+		<h1>Welcome, {{ request.user.username }}</h1>
+		<p class="muted">Manage clinic users, appointments, reports, and schedules from a wider control surface.</p>
 	</div>
 
-	<div class="card-list" style="margin-top: 1.5rem;">
-		<div class="item-card">
-			<h3>Exports</h3>
-			<p class="muted">Download CSV snapshots of appointments, patients, and doctors with schedules.</p>
-			<div class="action-row">
-				<a class="btn btn-soft" href="{% url 'admin_export_appointments_csv' %}">Appointments CSV</a>
-				<a class="btn btn-soft" href="{% url 'admin_export_patients_csv' %}">Patients CSV</a>
-				<a class="btn btn-soft" href="{% url 'admin_export_doctors_csv' %}">Doctors CSV</a>
-			</div>
+	<div class="hero-actions">
+		<a class="action-tile" href="{% url 'admin_analytics' %}">
+			<span class="tile-icon">A</span>
+			<span><span class="tile-title">Analytics</span><span class="tile-copy">Live clinic reporting</span></span>
+		</a>
+		<a class="action-tile" href="{% url 'appointments_hub' %}">
+			<span class="tile-icon">Q</span>
+			<span><span class="tile-title">Appointments</span><span class="tile-copy">Review requests and status</span></span>
+		</a>
+		<a class="action-tile" href="{% url 'create_doctor' %}">
+			<span class="tile-icon">D</span>
+			<span><span class="tile-title">Create Doctor</span><span class="tile-copy">Onboard clinical staff</span></span>
+		</a>
+		<a class="action-tile" href="{% url 'create_receptionist' %}">
+			<span class="tile-icon">R</span>
+			<span><span class="tile-title">Create Receptionist</span><span class="tile-copy">Add front desk access</span></span>
+		</a>
+	</div>
+</section>
+
+<section class="content-grid">
+	<div class="surface-panel">
+		<h2>Exports</h2>
+		<p class="muted">Download CSV snapshots of appointments, patients, and doctors with schedules.</p>
+		<div class="action-grid mt-2">
+			<a class="action-tile" href="{% url 'admin_export_appointments_csv' %}">
+				<span class="tile-icon">1</span>
+				<span><span class="tile-title">Appointments CSV</span><span class="tile-copy">Booking records</span></span>
+			</a>
+			<a class="action-tile" href="{% url 'admin_export_patients_csv' %}">
+				<span class="tile-icon">2</span>
+				<span><span class="tile-title">Patients CSV</span><span class="tile-copy">Patient directory</span></span>
+			</a>
+			<a class="action-tile" href="{% url 'admin_export_doctors_csv' %}">
+				<span class="tile-icon">3</span>
+				<span><span class="tile-title">Doctors CSV</span><span class="tile-copy">Doctors and schedules</span></span>
+			</a>
+		</div>
+	</div>
+
+	<div class="surface-panel">
+		<h2>Quick Return</h2>
+		<p class="muted">Jump back to the public entry point without leaving the session.</p>
+		<div class="action-row">
+			<a class="btn btn-soft" href="/">Back to Home</a>
 		</div>
 	</div>
 </section>

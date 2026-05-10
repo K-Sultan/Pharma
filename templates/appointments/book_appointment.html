@@ -1,11 +1,20 @@
 {% extends 'base.html' %}
 
+{% block title %}Book Appointment{% endblock %}
+
 {% block content %}
-<h2>Book Appointment</h2>
+<section class="page-hero compact">
+    <div class="hero-content">
+        <p class="kicker">Booking</p>
+        <h1>Book Appointment</h1>
+        <p class="muted">You are booking with Dr. {{ doctor.user.first_name }} {{ doctor.user.last_name }}.</p>
+    </div>
+</section>
 
-<p>You are booking with Dr. {{ doctor.user.first_name }} {{ doctor.user.last_name }}</p>
-
-<p>Booking logic will be implemented next.</p>
-
-<a href="{% url 'doctor_list' %}">Back to Doctors</a>
+<section class="surface-panel narrow">
+    <p class="empty-state">Booking logic will be implemented next.</p>
+    <div class="action-row">
+        <a class="btn btn-soft" href="{% url 'doctor_list' %}">Back to Doctors</a>
+    </div>
+</section>
 {% endblock %}

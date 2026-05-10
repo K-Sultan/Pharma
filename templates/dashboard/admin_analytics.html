@@ -3,63 +3,66 @@
 {% block title %}Admin Analytics{% endblock %}
 
 {% block content %}
-<section class="panel-card">
-	<p class="kicker">Admin</p>
-	<h1>Analytics</h1>
-	<p class="muted">Simple live snapshot of appointments, patients, doctors, and no-show activity.</p>
+<section class="page-hero compact">
+	<div class="hero-content">
+		<p class="kicker">Admin</p>
+		<h1>Analytics</h1>
+		<p class="muted">A live snapshot of appointments, patients, doctors, and no-show activity.</p>
+	</div>
+</section>
 
-	<div class="card-list">
-		<div class="item-card">
-			<h3>Total Appointments</h3>
-			<p>{{ metrics.total_appointments }}</p>
-		</div>
-		<div class="item-card">
-			<h3>Appointments Today</h3>
-			<p>{{ metrics.today_appointments }}</p>
-		</div>
-		<div class="item-card">
-			<h3>Checked In Today</h3>
-			<p>{{ metrics.today_checked_in }}</p>
-		</div>
-		<div class="item-card">
-			<h3>Patients</h3>
-			<p>{{ metrics.patient_count }}</p>
-		</div>
-		<div class="item-card">
-			<h3>Doctors</h3>
-			<p>{{ metrics.doctor_count }}</p>
-		</div>
-		<div class="item-card">
-			<h3>No-Show Rate</h3>
-			<p>{{ metrics.no_show_rate }}%</p>
+<section class="metrics-grid">
+	<div class="metric-card">
+		<span class="metric-label">Total Appointments</span>
+		<span class="metric-value">{{ metrics.total_appointments }}</span>
+	</div>
+	<div class="metric-card">
+		<span class="metric-label">Appointments Today</span>
+		<span class="metric-value">{{ metrics.today_appointments }}</span>
+	</div>
+	<div class="metric-card">
+		<span class="metric-label">Checked In Today</span>
+		<span class="metric-value">{{ metrics.today_checked_in }}</span>
+	</div>
+	<div class="metric-card">
+		<span class="metric-label">Patients</span>
+		<span class="metric-value">{{ metrics.patient_count }}</span>
+	</div>
+	<div class="metric-card">
+		<span class="metric-label">Doctors</span>
+		<span class="metric-value">{{ metrics.doctor_count }}</span>
+	</div>
+	<div class="metric-card">
+		<span class="metric-label">No-Show Rate</span>
+		<span class="metric-value">{{ metrics.no_show_rate }}%</span>
+	</div>
+</section>
+
+<section class="dashboard-grid">
+	<div class="surface-panel">
+		<h2>Status Breakdown</h2>
+		<div class="detail-grid">
+			<div class="detail-item"><span class="detail-label">Pending</span><span class="detail-value">{{ status_counts.pending }}</span></div>
+			<div class="detail-item"><span class="detail-label">Confirmed</span><span class="detail-value">{{ status_counts.confirmed }}</span></div>
+			<div class="detail-item"><span class="detail-label">Checked In</span><span class="detail-value">{{ status_counts.checked_in }}</span></div>
+			<div class="detail-item"><span class="detail-label">Completed</span><span class="detail-value">{{ status_counts.completed }}</span></div>
+			<div class="detail-item"><span class="detail-label">Declined</span><span class="detail-value">{{ status_counts.declined }}</span></div>
+			<div class="detail-item"><span class="detail-label">No Show</span><span class="detail-value">{{ status_counts.no_show }}</span></div>
+			<div class="detail-item"><span class="detail-label">Cancelled</span><span class="detail-value">{{ status_counts.cancelled }}</span></div>
 		</div>
 	</div>
 
-	<div class="card-list" style="margin-top: 1.5rem;">
-		<div class="item-card">
-			<h3>Status Breakdown</h3>
-			<p class="muted">Pending: {{ status_counts.pending }}</p>
-			<p class="muted">Confirmed: {{ status_counts.confirmed }}</p>
-			<p class="muted">Checked In: {{ status_counts.checked_in }}</p>
-			<p class="muted">Completed: {{ status_counts.completed }}</p>
-			<p class="muted">Declined: {{ status_counts.declined }}</p>
-			<p class="muted">No Show: {{ status_counts.no_show }}</p>
-			<p class="muted">Cancelled: {{ status_counts.cancelled }}</p>
+	<aside class="surface-panel">
+		<h2>Exports</h2>
+		<p class="muted">Download CSV files for reporting or spreadsheets.</p>
+		<div class="action-row">
+			<a class="btn btn-soft" href="{% url 'admin_export_appointments_csv' %}">Appointments CSV</a>
+			<a class="btn btn-soft" href="{% url 'admin_export_patients_csv' %}">Patients CSV</a>
+			<a class="btn btn-soft" href="{% url 'admin_export_doctors_csv' %}">Doctors CSV</a>
 		</div>
-
-		<div class="item-card">
-			<h3>Exports</h3>
-			<p class="muted">Download CSV files for reporting or spreadsheets.</p>
-			<div class="action-row">
-				<a class="btn btn-soft" href="{% url 'admin_export_appointments_csv' %}">Appointments CSV</a>
-				<a class="btn btn-soft" href="{% url 'admin_export_patients_csv' %}">Patients CSV</a>
-				<a class="btn btn-soft" href="{% url 'admin_export_doctors_csv' %}">Doctors CSV</a>
-			</div>
+		<div class="action-row">
+			<a class="btn btn-primary" href="{% url 'admin_dashboard' %}">Back to Dashboard</a>
 		</div>
-	</div>
-
-	<div class="action-row" style="margin-top: 1.5rem;">
-		<a class="btn btn-primary" href="{% url 'admin_dashboard' %}">Back to Admin Dashboard</a>
-	</div>
+	</aside>
 </section>
 {% endblock %}

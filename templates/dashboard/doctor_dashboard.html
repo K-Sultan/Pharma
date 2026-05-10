@@ -3,54 +3,78 @@
 {% block title %}Doctor Dashboard{% endblock %}
 
 {% block content %}
-<section class="panel-card">
-    <p class="kicker">Doctor</p>
-    <h1>Welcome, Dr. {{ request.user.username }}</h1>
-    <p class="muted">Today: <strong>{{ today }}</strong></p>
+<section class="page-hero">
+    <div class="hero-content">
+        <p class="kicker">Doctor workspace</p>
+        <h1>Welcome, Dr. {{ request.user.username }}</h1>
+        <p class="muted">Today: <strong>{{ today }}</strong></p>
+        <p class="muted">Keep the daily queue, appointment requests, and schedule controls within easy reach.</p>
+    </div>
 
-    <div class="action-row">
-        <a class="btn btn-primary" href="{% url 'appointments_hub' %}">Manage Appointments</a>
-        <a class="btn btn-soft" href="{% url 'doctor_schedule' %}">My Schedule</a>
+    <div class="hero-actions">
+        <a class="action-tile" href="{% url 'appointments_hub' %}">
+            <span class="tile-icon">A</span>
+            <span><span class="tile-title">Manage Appointments</span><span class="tile-copy">Review patient booking status</span></span>
+        </a>
+        <a class="action-tile" href="{% url 'doctor_schedule' %}">
+            <span class="tile-icon">S</span>
+            <span><span class="tile-title">My Schedule</span><span class="tile-copy">Control hours and exceptions</span></span>
+        </a>
     </div>
 </section>
 
-<section class="panel-card">
-    <h2>Today's Queue</h2>
+<section class="dashboard-grid">
+    <div class="surface-panel">
+        <h2>Today's Queue</h2>
 
-    {% if queue %}
-        <div class="card-list">
-            {% for appointment in queue %}
-                <article class="item-card">
-                    <h3>{{ appointment.patient.user.get_full_name|default:appointment.patient.user.username }}</h3>
-                    <p class="muted">{{ appointment.start_time|time:'H:i' }} – {{ appointment.end_time|time:'H:i' }} &nbsp;|&nbsp; {{ appointment.get_status_display }}</p>
-                    {% if appointment.waiting_time %}
-                        <p class="muted">Waiting: {{ appointment.waiting_time }}</p>
-                    {% endif %}
+        {% if queue %}
+            <div class="card-list">
+                {% for appointment in queue %}
+                    <article class="item-card queue-card">
+                        <div>
+                            <h3>{{ appointment.patient.user.get_full_name|default:appointment.patient.user.username }}</h3>
+                            <p class="muted">{{ appointment.start_time|time:'H:i' }} - {{ appointment.end_time|time:'H:i' }} | {{ appointment.get_status_display }}</p>
+                            {% if appointment.waiting_time %}
+                                <p class="muted">Waiting: {{ appointment.waiting_time }}</p>
+                            {% endif %}
+                        </div>
 
-                    <div class="action-row">
-                        {% if appointment.status != "checked_in" and appointment.status != "cancelled" and appointment.status != "completed" and appointment.status != "no_show" and appointment.status != "declined" %}
-                            <form method="POST" action="{% url 'check_in_local' appointment.id %}">
-                                {% csrf_token %}
-                                <button class="btn btn-primary btn-sm" type="submit">Check In</button>
-                            </form>
-                        {% endif %}
+                        <div class="action-row">
+                            {% if appointment.status != "checked_in" and appointment.status != "cancelled" and appointment.status != "completed" and appointment.status != "no_show" and appointment.status != "declined" %}
+                                <form method="POST" action="{% url 'check_in_local' appointment.id %}">
+                                    {% csrf_token %}
+                                    <button class="btn btn-primary btn-sm" type="submit">Check In</button>
+                                </form>
+                            {% endif %}
 
-                        {% if appointment.status != "cancelled" and appointment.status != "checked_in" and appointment.status != "completed" and appointment.status != "no_show" and appointment.status != "declined" %}
-                            <form method="POST" action="{% url 'mark_no_show_local' appointment.id %}">
-                                {% csrf_token %}
-                                <button class="btn btn-danger btn-sm" type="submit">No Show</button>
-                            </form>
-                        {% endif %}
+                            {% if appointment.status != "cancelled" and appointment.status != "checked_in" and appointment.status != "completed" and appointment.status != "no_show" and appointment.status != "declined" %}
+                                <form method="POST" action="{% url 'mark_no_show_local' appointment.id %}">
+                                    {% csrf_token %}
+                                    <button class="btn btn-danger btn-sm" type="submit">No Show</button>
+                                </form>
+                            {% endif %}
 
-                        {% if appointment.status == "checked_in" %}
-                            <a class="btn btn-primary btn-sm" href="{% url 'fill_consultation' appointment.id %}">Fill Consultation</a>
-                        {% endif %}
-                    </div>
-                </article>
-            {% endfor %}
+                            {% if appointment.status == "checked_in" %}
+                                <a class="btn btn-primary btn-sm" href="{% url 'fill_consultation' appointment.id %}">Fill Consultation</a>
+                            {% endif %}
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="empty-state">No appointments scheduled for today.</p>
+        {% endif %}
+    </div>
+
+    <aside class="surface-panel">
+        <h2>Today at a Glance</h2>
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <span class="metric-label">Queue</span>
+                <span class="metric-value">{{ queue|length }}</span>
+            </div>
         </div>
-    {% else %}
-        <p class="empty-state">No appointments scheduled for today.</p>
-    {% endif %}
+        <p class="muted mt-2">Use the queue actions only when the patient status changes.</p>
+    </aside>
 </section>
 {% endblock %}

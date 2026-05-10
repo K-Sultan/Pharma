@@ -3,73 +3,79 @@
 {% block title %}My Appointments{% endblock %}
 
 {% block content %}
-<section class="panel-card">
-    <p class="kicker">Appointments</p>
-    <h1>My Appointments</h1>
-
-    <div class="action-row">
-        <a class="btn btn-primary" href="{% url 'doctor_list' %}">+ Book Another</a>
+<section class="page-hero">
+    <div class="hero-content">
+        <p class="kicker">Appointments</p>
+        <h1>My Appointments</h1>
+        <p class="muted">See your upcoming, past, and cancelled visits in separate areas instead of one long stack.</p>
     </div>
 
-    <div class="gap-section mt-3">
+    <div class="hero-actions">
+        <a class="action-tile" href="{% url 'doctor_list' %}">
+            <span class="tile-icon">+</span>
+            <span><span class="tile-title">Book Another</span><span class="tile-copy">Choose a doctor and slot</span></span>
+        </a>
+    </div>
+</section>
 
-        <div class="section-block">
-            <h2>Upcoming</h2>
-            {% if upcoming %}
-                <div class="card-list">
-                    {% for appt in upcoming %}
-                        <article class="item-card">
-                            <h3>{{ appt.date }} &nbsp;·&nbsp; {{ appt.start_time|time:'H:i' }}</h3>
-                            <p class="muted">Dr. {{ appt.doctor.user.username }} &nbsp;|&nbsp; {{ appt.get_status_display }}</p>
-                            <div class="action-row">
-                                {% if appt.can_reschedule %}
-                                    <a class="btn btn-soft btn-sm" href="{% url 'reschedule_appointment' appt.id %}">Reschedule</a>
-                                {% endif %}
-                                <form method="post" action="{% url 'cancel_appointment' appt.id %}">
-                                    {% csrf_token %}
-                                    <button class="btn btn-danger btn-sm" type="submit">Cancel</button>
-                                </form>
-                            </div>
-                        </article>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p class="empty-state">No upcoming appointments.</p>
-            {% endif %}
-        </div>
+<section class="content-grid">
+    <div class="surface-panel">
+        <h2>Upcoming</h2>
+        {% if upcoming %}
+            <div class="card-list">
+                {% for appt in upcoming %}
+                    <article class="item-card appointment-card">
+                        <div>
+                            <h3>{{ appt.date }} | {{ appt.start_time|time:'H:i' }}</h3>
+                            <p class="muted">Dr. {{ appt.doctor.user.username }} | {{ appt.get_status_display }}</p>
+                        </div>
+                        <div class="action-row">
+                            {% if appt.can_reschedule %}
+                                <a class="btn btn-soft btn-sm" href="{% url 'reschedule_appointment' appt.id %}">Reschedule</a>
+                            {% endif %}
+                            <form method="post" action="{% url 'cancel_appointment' appt.id %}">
+                                {% csrf_token %}
+                                <button class="btn btn-danger btn-sm" type="submit">Cancel</button>
+                            </form>
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="empty-state">No upcoming appointments.</p>
+        {% endif %}
+    </div>
 
-        <div class="section-block">
-            <h2>Past</h2>
-            {% if past %}
-                <div class="card-list">
-                    {% for appt in past %}
-                        <article class="item-card">
-                            <h3>{{ appt.date }} &nbsp;·&nbsp; {{ appt.start_time|time:'H:i' }}</h3>
-                            <p class="muted">Dr. {{ appt.doctor.user.username }}</p>
-                        </article>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p class="empty-state">No past appointments yet.</p>
-            {% endif %}
-        </div>
+    <div class="surface-panel">
+        <h2>Past</h2>
+        {% if past %}
+            <div class="card-list">
+                {% for appt in past %}
+                    <article class="item-card">
+                        <h3>{{ appt.date }} | {{ appt.start_time|time:'H:i' }}</h3>
+                        <p class="muted">Dr. {{ appt.doctor.user.username }}</p>
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="empty-state">No past appointments yet.</p>
+        {% endif %}
+    </div>
 
-        <div class="section-block">
-            <h2>Cancelled</h2>
-            {% if cancelled %}
-                <div class="card-list">
-                    {% for appt in cancelled %}
-                        <article class="item-card">
-                            <h3>{{ appt.date }} &nbsp;·&nbsp; {{ appt.start_time|time:'H:i' }}</h3>
-                            <p class="muted">Dr. {{ appt.doctor.user.username }} &nbsp;|&nbsp; {{ appt.get_status_display }}</p>
-                        </article>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p class="empty-state">No cancelled appointments.</p>
-            {% endif %}
-        </div>
-
+    <div class="surface-panel">
+        <h2>Cancelled</h2>
+        {% if cancelled %}
+            <div class="card-list">
+                {% for appt in cancelled %}
+                    <article class="item-card">
+                        <h3>{{ appt.date }} | {{ appt.start_time|time:'H:i' }}</h3>
+                        <p class="muted">Dr. {{ appt.doctor.user.username }} | {{ appt.get_status_display }}</p>
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="empty-state">No cancelled appointments.</p>
+        {% endif %}
     </div>
 </section>
 {% endblock %}

@@ -3,11 +3,15 @@
 {% block title %}Doctors{% endblock %}
 
 {% block content %}
-<section class="panel-card">
-    <p class="kicker">Appointments</p>
-    <h1>Choose a doctor</h1>
-    <p class="muted">Select a doctor to check their availability and continue to booking.</p>
+<section class="page-hero compact">
+    <div class="hero-content">
+        <p class="kicker">Appointments</p>
+        <h1>Choose a doctor</h1>
+        <p class="muted">Select a doctor to check availability and continue to booking.</p>
+    </div>
+</section>
 
+<section class="surface-panel">
     <div class="card-list">
         {% for doctor in doctors %}
             <article class="item-card doctor-card">

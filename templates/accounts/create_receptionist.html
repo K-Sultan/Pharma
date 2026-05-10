@@ -3,10 +3,15 @@
 {% block title %}Create Receptionist{% endblock %}
 
 {% block content %}
-<section class="form-card narrow">
-    <h2>Create Receptionist Account</h2>
-    <p class="muted">Admin-only form for onboarding receptionist users.</p>
+<section class="page-hero compact narrow">
+    <div class="hero-content">
+        <p class="kicker">Admin</p>
+        <h1>Create Receptionist Account</h1>
+        <p class="muted">Admin-only form for onboarding receptionist users.</p>
+    </div>
+</section>
 
+<section class="form-card narrow">
     <form method="POST" class="stack-form django-form">
         {% csrf_token %}
         {{ form.as_p }}

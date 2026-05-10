@@ -3,19 +3,32 @@
 {% block title %}Fill Consultation{% endblock %}
 
 {% block content %}
-<section class="panel-card">
-    <p class="eyebrow">Consultation</p>
-    <h1>Fill Consultation Record</h1>
-
-    <div class="section-block">
-        <p><strong>Patient:</strong> {{ appointment.patient.user.first_name }} {{ appointment.patient.user.last_name }}</p>
-        <p><strong>Appointment:</strong> {{ appointment.date }} &nbsp;|&nbsp; {{ appointment.start_time }} – {{ appointment.end_time }}</p>
+<section class="page-hero">
+    <div class="hero-content">
+        <p class="eyebrow">Consultation</p>
+        <h1>Fill Consultation Record</h1>
+        <p class="muted">Complete the clinical record and prescription details for this appointment.</p>
     </div>
 
-    <div class="section-block">
-        <form method="POST" class="stack-form">
-            {% csrf_token %}
+    <div class="hero-side">
+        <div class="detail-grid">
+            <div class="detail-item">
+                <span class="detail-label">Patient</span>
+                <span class="detail-value">{{ appointment.patient.user.first_name }} {{ appointment.patient.user.last_name }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Appointment</span>
+                <span class="detail-value">{{ appointment.date }} | {{ appointment.start_time }} - {{ appointment.end_time }}</span>
+            </div>
+        </div>
+    </div>
+</section>
 
+<section class="surface-panel">
+    <form method="POST" class="stack-form">
+        {% csrf_token %}
+
+        <div class="form-row">
             <div class="form-group">
                 <label for="notes">Clinical Notes</label>
                 <textarea id="notes" name="notes" rows="4">{{ consultation.notes }}</textarea>
@@ -25,34 +38,34 @@
                 <label for="diagnosis">Diagnosis</label>
                 <textarea id="diagnosis" name="diagnosis" rows="4">{{ consultation.diagnosis }}</textarea>
             </div>
+        </div>
 
+        <div class="form-group">
+            <label for="requested_tests">Requested Tests</label>
+            <textarea id="requested_tests" name="requested_tests" rows="3">{{ consultation.requested_tests }}</textarea>
+        </div>
+
+        <hr>
+        <h2>Prescription Item</h2>
+
+        <div class="form-row">
             <div class="form-group">
-                <label for="requested_tests">Requested Tests</label>
-                <textarea id="requested_tests" name="requested_tests" rows="3">{{ consultation.requested_tests }}</textarea>
+                <label for="drug">Drug</label>
+                <input type="text" id="drug" name="drug">
             </div>
-
-            <hr>
-            <h3>Prescription Item</h3>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="drug">Drug</label>
-                    <input type="text" id="drug" name="drug">
-                </div>
-                <div class="form-group">
-                    <label for="dose">Dose</label>
-                    <input type="text" id="dose" name="dose">
-                </div>
-                <div class="form-group">
-                    <label for="duration">Duration</label>
-                    <input type="text" id="duration" name="duration">
-                </div>
+            <div class="form-group">
+                <label for="dose">Dose</label>
+                <input type="text" id="dose" name="dose">
             </div>
-
-            <div class="action-row">
-                <button class="btn btn-primary" type="submit">Save &amp; Complete Appointment</button>
+            <div class="form-group">
+                <label for="duration">Duration</label>
+                <input type="text" id="duration" name="duration">
             </div>
-        </form>
-    </div>
+        </div>
+
+        <div class="action-row">
+            <button class="btn btn-primary" type="submit">Save &amp; Complete Appointment</button>
+        </div>
+    </form>
 </section>
 {% endblock %}

@@ -3,168 +3,179 @@
 {% block title %}My Schedule{% endblock %}
 
 {% block content %}
-<section class="panel-card">
-    <h2>{% if request.user.role == 'doctor' %}My Schedule{% else %}Doctor Schedule{% endif %}</h2>
-    <p class="muted">
-        {% if request.user.role == 'doctor' %}
-            Select a day from the weekly table to control that day schedule.
-        {% else %}
-            Managing schedule for Dr. {{ doctor_profile.user.get_full_name|default:doctor_profile.user.username }}.
-        {% endif %}
-    </p>
-
-    <h3>Weekly Schedule</h3>
-    <table class="schedule-table">
-        <thead>
-            <tr>
-                <th>Day</th>
-                <th>Status</th>
-                <th>Hours</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in weekly_rows %}
-            <tr class="{% if row.is_selected %}is-selected{% endif %}">
-                <td>
-                    <a class="day-link" href="{{ schedule_url }}?day={{ row.day_value }}">{{ row.day_label }}</a>
-                </td>
-                {% if row.entry %}
-                    <td><span class="badge badge-working">Working</span></td>
-                    <td>{{ row.entry.start_time|time:'H:i' }} - {{ row.entry.end_time|time:'H:i' }}</td>
-                {% else %}
-                    <td><span class="badge badge-off">Off</span></td>
-                    <td>Doctor is off</td>
-                {% endif %}
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    <div class="schedule-editor">
-        <h3>Control {{ selected_day_label }}</h3>
-        {% if selected_weekly_entry %}
-            <p class="muted">Current: {{ selected_weekly_entry.start_time|time:'H:i' }} - {{ selected_weekly_entry.end_time|time:'H:i' }}</p>
-        {% else %}
-            <p class="muted">Current: Doctor is off.</p>
-        {% endif %}
-
-        <form method="post" class="stack-form django-form">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="save_weekly">
-            <input type="hidden" name="selected_day" value="{{ selected_day }}">
-            {{ day_schedule_form.as_p }}
-            <div class="action-row">
-                <button type="submit" class="btn btn-primary">Save Day Schedule</button>
-            </div>
-        </form>
-
-        <form method="post" class="stack-form" style="margin-top: 0.75rem;">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="clear_weekly">
-            <input type="hidden" name="selected_day" value="{{ selected_day }}">
-            <button type="submit" class="btn btn-soft">Mark Selected Day Off</button>
-        </form>
-
-        <div class="schedule-buffer-block" style="margin-top: 1rem;">
-            <h4>Slot Buffer</h4>
-            <p class="muted">Current buffer: {{ doctor_profile.buffer_minutes }} minutes between slots.</p>
-            <form method="post" class="stack-form django-form">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="save_buffer">
-                <input type="hidden" name="selected_day" value="{{ selected_day }}">
-                {{ buffer_form.as_p }}
-                <div class="action-row">
-                    <button type="submit" class="btn btn-primary">Save Buffer Time</button>
-                </div>
-            </form>
-        </div>
+<section class="page-hero compact">
+    <div class="hero-content">
+        <p class="kicker">Schedule</p>
+        <h1>{% if request.user.role == 'doctor' %}My Schedule{% else %}Doctor Schedule{% endif %}</h1>
+        <p class="muted">
+            {% if request.user.role == 'doctor' %}
+                Select a day from the weekly table to control that day schedule.
+            {% else %}
+                Managing schedule for Dr. {{ doctor_profile.user.get_full_name|default:doctor_profile.user.username }}.
+            {% endif %}
+        </p>
     </div>
+</section>
 
-    <h3>Exceptions</h3>
-    <div class="exception-tabs" role="tablist" aria-label="Exception forms">
-        <button
-            id="tab-day-off"
-            class="tab-btn"
-            type="button"
-            role="tab"
-            aria-controls="panel-day-off"
-            aria-selected="false"
-            data-tab="day-off"
-        >
-            Add a Day Off
-        </button>
-        <button
-            id="tab-custom-workday"
-            class="tab-btn"
-            type="button"
-            role="tab"
-            aria-controls="panel-custom-workday"
-            aria-selected="false"
-            data-tab="custom-workday"
-        >
-            Add a Custom Work Day
-        </button>
-    </div>
-
-    {% if exception_entries %}
-        <table class="schedule-table exception-table">
+<section class="dashboard-grid schedule-grid">
+    <div class="surface-panel">
+        <h2>Weekly Schedule</h2>
+        <table class="schedule-table">
             <thead>
                 <tr>
-                    <th>Date</th>
-                    <th>Type</th>
-                    <th>Start</th>
-                    <th>End</th>
-                    <th>Note</th>
-                    <th>Action</th>
+                    <th>Day</th>
+                    <th>Status</th>
+                    <th>Hours</th>
                 </tr>
             </thead>
             <tbody>
-                {% for entry in exception_entries %}
-                <tr>
-                    <td>{{ entry.date|date:'d/m/Y' }}</td>
-                    <td>{{ entry.get_exception_type_display }}</td>
-                    <td>{{ entry.start_time|time:'H:i'|default:'-' }}</td>
-                    <td>{{ entry.end_time|time:'H:i'|default:'-' }}</td>
-                    <td>{{ entry.note|default:'-' }}</td>
+                {% for row in weekly_rows %}
+                <tr class="{% if row.is_selected %}is-selected{% endif %}">
                     <td>
-                        <form method="post">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="delete_exception">
-                            <input type="hidden" name="exception_id" value="{{ entry.id }}">
-                            <button type="submit" class="btn">Delete</button>
-                        </form>
+                        <a class="day-link" href="{{ schedule_url }}?day={{ row.day_value }}">{{ row.day_label }}</a>
                     </td>
+                    {% if row.entry %}
+                        <td><span class="badge badge-working">Working</span></td>
+                        <td>{{ row.entry.start_time|time:'H:i' }} - {{ row.entry.end_time|time:'H:i' }}</td>
+                    {% else %}
+                        <td><span class="badge badge-off">Off</span></td>
+                        <td>Doctor is off</td>
+                    {% endif %}
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-    {% else %}
-        <p class="muted">No exceptions added yet.</p>
-    {% endif %}
 
-    <div id="panel-day-off" class="tab-panel schedule-form-block" role="tabpanel" aria-labelledby="tab-day-off">
-        <form id="day-off-form" method="post" class="stack-form django-form">
-            {% csrf_token %}
-            <h4>Add a Day Off</h4>
-            <input type="hidden" name="action" value="add_day_off">
-            {{ day_off_form.as_p }}
-            <button type="submit" class="btn btn-primary">Save Day Off</button>
-        </form>
+        <div class="schedule-editor">
+            <h3>Control {{ selected_day_label }}</h3>
+            {% if selected_weekly_entry %}
+                <p class="muted">Current: {{ selected_weekly_entry.start_time|time:'H:i' }} - {{ selected_weekly_entry.end_time|time:'H:i' }}</p>
+            {% else %}
+                <p class="muted">Current: Doctor is off.</p>
+            {% endif %}
+
+            <form method="post" class="stack-form django-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save_weekly">
+                <input type="hidden" name="selected_day" value="{{ selected_day }}">
+                {{ day_schedule_form.as_p }}
+                <div class="action-row">
+                    <button type="submit" class="btn btn-primary">Save Day Schedule</button>
+                </div>
+            </form>
+
+            <form method="post" class="stack-form mt-2">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="clear_weekly">
+                <input type="hidden" name="selected_day" value="{{ selected_day }}">
+                <button type="submit" class="btn btn-soft">Mark Selected Day Off</button>
+            </form>
+
+            <div class="schedule-buffer-block mt-3">
+                <h4>Slot Buffer</h4>
+                <p class="muted">Current buffer: {{ doctor_profile.buffer_minutes }} minutes between slots.</p>
+                <form method="post" class="stack-form django-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="save_buffer">
+                    <input type="hidden" name="selected_day" value="{{ selected_day }}">
+                    {{ buffer_form.as_p }}
+                    <div class="action-row">
+                        <button type="submit" class="btn btn-primary">Save Buffer Time</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 
-    <div id="panel-custom-workday" class="tab-panel schedule-form-block" role="tabpanel" aria-labelledby="tab-custom-workday">
-        <form id="custom-workday-form" method="post" class="stack-form django-form">
-            {% csrf_token %}
-            <h4>Add a Custom Work Day</h4>
-            <input type="hidden" name="action" value="add_custom_work_day">
-            {{ custom_work_day_form.as_p }}
-            <button type="submit" class="btn btn-primary">Save Custom Work Day</button>
-        </form>
-    </div>
+    <aside class="surface-panel">
+        <h2>Exceptions</h2>
+        <div class="exception-tabs" role="tablist" aria-label="Exception forms">
+            <button
+                id="tab-day-off"
+                class="tab-btn"
+                type="button"
+                role="tab"
+                aria-controls="panel-day-off"
+                aria-selected="false"
+                data-tab="day-off"
+            >
+                Add a Day Off
+            </button>
+            <button
+                id="tab-custom-workday"
+                class="tab-btn"
+                type="button"
+                role="tab"
+                aria-controls="panel-custom-workday"
+                aria-selected="false"
+                data-tab="custom-workday"
+            >
+                Add a Custom Work Day
+            </button>
+        </div>
 
-    <div class="action-row" style="margin-top: 1rem;">
-        <a class="btn" href="{% url back_url %}">Back</a>
-    </div>
+        <div id="panel-day-off" class="tab-panel schedule-form-block" role="tabpanel" aria-labelledby="tab-day-off">
+            <form id="day-off-form" method="post" class="stack-form django-form">
+                {% csrf_token %}
+                <h4>Add a Day Off</h4>
+                <input type="hidden" name="action" value="add_day_off">
+                {{ day_off_form.as_p }}
+                <button type="submit" class="btn btn-primary">Save Day Off</button>
+            </form>
+        </div>
+
+        <div id="panel-custom-workday" class="tab-panel schedule-form-block" role="tabpanel" aria-labelledby="tab-custom-workday">
+            <form id="custom-workday-form" method="post" class="stack-form django-form">
+                {% csrf_token %}
+                <h4>Add a Custom Work Day</h4>
+                <input type="hidden" name="action" value="add_custom_work_day">
+                {{ custom_work_day_form.as_p }}
+                <button type="submit" class="btn btn-primary">Save Custom Work Day</button>
+            </form>
+        </div>
+
+        {% if exception_entries %}
+            <div class="table-scroll">
+                <table class="schedule-table exception-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Start</th>
+                            <th>End</th>
+                            <th>Note</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in exception_entries %}
+                        <tr>
+                            <td>{{ entry.date|date:'d/m/Y' }}</td>
+                            <td>{{ entry.get_exception_type_display }}</td>
+                            <td>{{ entry.start_time|time:'H:i'|default:'-' }}</td>
+                            <td>{{ entry.end_time|time:'H:i'|default:'-' }}</td>
+                            <td>{{ entry.note|default:'-' }}</td>
+                            <td>
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="delete_exception">
+                                    <input type="hidden" name="exception_id" value="{{ entry.id }}">
+                                    <button type="submit" class="btn btn-sm">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="empty-state mt-2">No exceptions added yet.</p>
+        {% endif %}
+
+        <div class="action-row mt-3">
+            <a class="btn" href="{% url back_url %}">Back</a>
+        </div>
+    </aside>
 </section>
 
 <script>

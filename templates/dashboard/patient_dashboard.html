@@ -3,43 +3,69 @@
 {% block title %}Patient Dashboard{% endblock %}
 
 {% block content %}
-<section class="panel-card">
-    <p class="kicker">Patient</p>
-    <h1>Welcome, {{ request.user.username }}</h1>
-    <p class="muted">Manage your appointments and consultations from here.</p>
+<section class="page-hero">
+    <div class="hero-content">
+        <p class="kicker">Patient portal</p>
+        <h1>Welcome, {{ request.user.username }}</h1>
+        <p class="muted">Book visits, track upcoming appointments, and review consultation summaries from one clean workspace.</p>
+    </div>
 
-    <div class="action-row">
-        <a class="btn btn-primary" href="{% url 'doctor_list' %}">Make Appointment</a>
-        <a class="btn btn-soft" href="{% url 'patient_appointments' %}">All Appointments</a>
-        <a class="btn btn-soft" href="{% url 'patient_consultations' %}">My Consultations</a>
-        <a class="btn btn-soft" href="{% url 'patient_profile' %}">My Profile</a>
+    <div class="hero-actions">
+        <a class="action-tile" href="{% url 'doctor_list' %}">
+            <span class="tile-icon">B</span>
+            <span><span class="tile-title">Make Appointment</span><span class="tile-copy">Choose a doctor and time</span></span>
+        </a>
+        <a class="action-tile" href="{% url 'patient_appointments' %}">
+            <span class="tile-icon">A</span>
+            <span><span class="tile-title">All Appointments</span><span class="tile-copy">Upcoming, past, and cancelled</span></span>
+        </a>
+        <a class="action-tile" href="{% url 'patient_consultations' %}">
+            <span class="tile-icon">C</span>
+            <span><span class="tile-title">Consultations</span><span class="tile-copy">Read completed summaries</span></span>
+        </a>
+        <a class="action-tile" href="{% url 'patient_profile' %}">
+            <span class="tile-icon">P</span>
+            <span><span class="tile-title">My Profile</span><span class="tile-copy">Contact and emergency details</span></span>
+        </a>
     </div>
 </section>
 
-<section class="panel-card">
-    <h2>Upcoming Appointments</h2>
-    <p class="muted">Today: <strong>{{ today }}</strong></p>
+<section class="dashboard-grid">
+    <div class="surface-panel">
+        <h2>Upcoming Appointments</h2>
+        <p class="muted">Today: <strong>{{ today }}</strong></p>
 
-    {% if upcoming %}
-        <div class="card-list">
-            {% for appt in upcoming %}
-                <article class="item-card">
-                    <h3>{{ appt.date }} &nbsp;·&nbsp; {{ appt.start_time|time:'H:i' }}</h3>
-                    <p class="muted">Dr. {{ appt.doctor.user.get_full_name|default:appt.doctor.user.username }} &nbsp;|&nbsp; {{ appt.get_status_display }}</p>
-                    <div class="action-row">
-                        {% if appt.can_reschedule %}
-                            <a class="btn btn-soft btn-sm" href="{% url 'reschedule_appointment' appt.id %}">Reschedule</a>
-                        {% endif %}
-                        <form method="post" action="{% url 'cancel_appointment' appt.id %}">
-                            {% csrf_token %}
-                            <button class="btn btn-danger btn-sm" type="submit">Cancel</button>
-                        </form>
-                    </div>
-                </article>
-            {% endfor %}
+        {% if upcoming %}
+            <div class="card-list">
+                {% for appt in upcoming %}
+                    <article class="item-card appointment-card">
+                        <div>
+                            <h3>{{ appt.date }} | {{ appt.start_time|time:'H:i' }}</h3>
+                            <p class="muted">Dr. {{ appt.doctor.user.get_full_name|default:appt.doctor.user.username }} | {{ appt.get_status_display }}</p>
+                        </div>
+                        <div class="action-row">
+                            {% if appt.can_reschedule %}
+                                <a class="btn btn-soft btn-sm" href="{% url 'reschedule_appointment' appt.id %}">Reschedule</a>
+                            {% endif %}
+                            <form method="post" action="{% url 'cancel_appointment' appt.id %}">
+                                {% csrf_token %}
+                                <button class="btn btn-danger btn-sm" type="submit">Cancel</button>
+                            </form>
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="empty-state">No upcoming appointments. <a href="{% url 'doctor_list' %}">Book one now</a></p>
+        {% endif %}
+    </div>
+
+    <aside class="surface-panel">
+        <h2>Next Step</h2>
+        <p class="muted">Need another visit? Start from the doctor list and pick a slot that works for you.</p>
+        <div class="action-row">
+            <a class="btn btn-primary" href="{% url 'doctor_list' %}">Book Appointment</a>
         </div>
-    {% else %}
-        <p class="empty-state">No upcoming appointments. <a href="{% url 'doctor_list' %}" style="color:var(--clinic-teal);">Book one now →</a></p>
-    {% endif %}
+    </aside>
 </section>
 {% endblock %}
